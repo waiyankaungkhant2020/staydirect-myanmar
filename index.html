@@ -377,4 +377,847 @@
         </div>
       </div>
 
-      <button onclick="submitGuestBooking()" id="mb
+      <button onclick="submitGuestBooking()" id="mb-submit-btn" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm shadow-sm">
+        Confirm Direct Reservation
+      </button>
+    </div>
+  </div>
+
+  <!-- LOOKUP MODAL -->
+  <div id="modal-lookup" class="hidden fixed inset-0 bg-slate-950/60 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+      <div class="flex items-center justify-between border-b pb-3">
+        <h3 class="font-bold text-base text-slate-900">Reservation Status</h3>
+        <button onclick="closeModal('modal-lookup')" class="text-slate-400 hover:text-slate-700 font-bold text-lg">&times;</button>
+      </div>
+      <div class="flex gap-2">
+        <input type="text" id="lookup-code-input" placeholder="Enter Ref (e.g. DIR-4821)" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm uppercase font-mono" />
+        <button onclick="lookupBooking()" class="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg">Search</button>
+      </div>
+      <div id="lookup-result" class="text-sm"></div>
+    </div>
+  </div>
+
+  <!-- WALK-IN MODAL -->
+  <div id="modal-walkin" class="hidden fixed inset-0 bg-slate-950/60 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+      <div class="flex items-center justify-between border-b pb-3">
+        <h3 class="font-bold text-base text-slate-900">Log Walk-In / Viber Reservation</h3>
+        <button onclick="closeModal('modal-walkin')" class="text-slate-400 hover:text-slate-700 font-bold text-lg">&times;</button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Select Room</label>
+          <select id="wi-room" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"></select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Guest Name</label>
+          <input type="text" id="wi-name" placeholder="Guest Name" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Phone Number</label>
+          <input type="tel" id="wi-phone" placeholder="09..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Check-In</label>
+            <input type="date" id="wi-checkin" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Check-Out</label>
+            <input type="date" id="wi-checkout" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+          </div>
+        </div>
+      </div>
+      <button onclick="submitWalkIn()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm">
+        Save Confirmed Booking
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- ZERO-CDN DIRECT SUPABASE REST CLIENT + MULTI-PHOTO LOGIC  -->
+  <!-- ========================================================= -->
+  <script>
+    const SUPABASE_URL = "https://xrwqbdjvuztjgkknsank.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_XdUFQkfZs6lkq2yxkXQBdQ_CKWe0wOD";
+    const MASTER_SUPER_ADMIN_PASS = "WYKK2026";
+    const STORAGE_BUCKET = "payment-slips";
+    const MAX_ROOM_PHOTOS = 4;
+
+    async function sbFetch(path, options = {}) {
+      const headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+      };
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { ...options, headers });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || `HTTP ${res.status}`);
+      }
+      const text = await res.text();
+      return text ? JSON.parse(text) : null;
+    }
+
+    async function uploadFileToBucket(file, folder) {
+      const ext = file.name.split(".").pop() || "jpg";
+      const filePath = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
+      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${filePath}`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": `Bearer ${SUPABASE_KEY}`,
+          "Content-Type": file.type || "image/jpeg"
+        },
+        body: file
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error("Upload failed: " + errText);
+      }
+      return `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${filePath}`;
+    }
+
+    let currentHotel = null;
+    let hotelRooms = [];
+    let hotelBookings = [];
+    let selectedRoomForBooking = null;
+
+    // Gallery Lightbox State
+    let activeGalleryPhotos = [];
+    let activeGalleryIndex = 0;
+
+    const FALLBACK_ROOM_IMG = "https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=800&q=80";
+
+    function getRoomPhotos(room) {
+      let arr = [];
+      if (Array.isArray(room.gallery_urls) && room.gallery_urls.length > 0) {
+        arr = room.gallery_urls.filter(Boolean);
+      } else if (room.image_url) {
+        arr = [room.image_url];
+      }
+      return arr.slice(0, MAX_ROOM_PHOTOS);
+    }
+
+    window.addEventListener("DOMContentLoaded", async () => {
+      initDefaultDates();
+      const params = new URLSearchParams(window.location.search);
+      const view = params.get("view");
+      const slug = params.get("hotel") || "yangon-boutique";
+
+      if (view === "superadmin") {
+        document.getElementById("view-loading").classList.add("hidden");
+        document.getElementById("nav-right-actions").classList.add("hidden");
+        document.getElementById("view-superadmin").classList.remove("hidden");
+        return;
+      }
+
+      await loadHotelWorkspace(slug, view === "admin" ? "admin" : "guest");
+    });
+
+    function initDefaultDates() {
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const fmt = d => d.toISOString().split("T")[0];
+      document.getElementById("guest-checkin").value = fmt(today);
+      document.getElementById("guest-checkout").value = fmt(tomorrow);
+      document.getElementById("wi-checkin").value = fmt(today);
+      document.getElementById("wi-checkout").value = fmt(tomorrow);
+    }
+
+    function getNights(inStr, outStr) {
+      const diff = Math.round((new Date(outStr) - new Date(inStr)) / (1000 * 60 * 60 * 24));
+      return diff > 0 ? diff : 1;
+    }
+
+    function recalcTotals() {
+      const nights = getNights(
+        document.getElementById("guest-checkin").value,
+        document.getElementById("guest-checkout").value
+      );
+      document.getElementById("guest-nights-label").textContent = `${nights} Night${nights > 1 ? 's' : ''} Stay`;
+      renderGuestRooms();
+    }
+
+    async function loadHotelWorkspace(slug, initialMode) {
+      try {
+        const rows = await sbFetch(`hotels?slug=eq.${encodeURIComponent(slug)}&select=*`);
+        const hotel = rows && rows[0];
+        document.getElementById("view-loading").classList.add("hidden");
+
+        if (!hotel || !hotel.is_active) {
+          document.getElementById("view-inactive").classList.remove("hidden");
+          return;
+        }
+
+        currentHotel = hotel;
+        document.getElementById("nav-hotel-name").textContent = hotel.name;
+        document.getElementById("nav-hotel-location").textContent = hotel.location || "Myanmar";
+        document.getElementById("hero-hotel-name").textContent = hotel.name;
+        document.getElementById("hero-hotel-sub").textContent = `${hotel.location || ''} • Direct Reservation & Instant Confirmation (${hotel.phone || ''})`;
+
+        await refreshHotelData();
+
+        if (initialMode === "admin") {
+          document.getElementById("view-admin").classList.remove("hidden");
+          document.getElementById("nav-btn-lookup").classList.add("hidden");
+          const backLink = document.getElementById("nav-btn-back-guest");
+          backLink.href = `${window.location.pathname}?hotel=${hotel.slug}`;
+          backLink.classList.remove("hidden");
+        } else {
+          document.getElementById("view-guest").classList.remove("hidden");
+        }
+      } catch (err) {
+        document.getElementById("view-loading").classList.add("hidden");
+        document.getElementById("inactive-msg").textContent = "Connection error: " + err.message;
+        document.getElementById("view-inactive").classList.remove("hidden");
+      }
+    }
+
+    async function refreshHotelData() {
+      if (!currentHotel) return;
+      const [roomsData, bookingsData] = await Promise.all([
+        sbFetch(`rooms?hotel_id=eq.${currentHotel.id}&select=*&order=room_number.asc`),
+        sbFetch(`bookings?hotel_id=eq.${currentHotel.id}&select=*,rooms(room_number,room_type)&order=created_at.desc`)
+      ]);
+      hotelRooms = roomsData || [];
+      hotelBookings = bookingsData || [];
+      renderGuestRooms();
+      renderAdminDashboard();
+    }
+
+    // RENDER GUEST ROOMS (CLICKABLE PHOTO GALLERY)
+    function renderGuestRooms() {
+      const grid = document.getElementById("guest-rooms-grid");
+      const availableRooms = hotelRooms.filter(r => r.status === "Available");
+      document.getElementById("guest-room-count").textContent = `${availableRooms.length} rooms available`;
+
+      const nights = getNights(
+        document.getElementById("guest-checkin").value,
+        document.getElementById("guest-checkout").value
+      );
+
+      if (hotelRooms.length === 0) {
+        grid.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400 text-sm">No rooms configured yet for this property.</div>`;
+        return;
+      }
+
+      grid.innerHTML = hotelRooms.map(room => {
+        const isAvail = room.status === "Available";
+        const total = room.price_mmk * nights;
+        const photos = getRoomPhotos(room);
+        const coverImg = photos[0] || FALLBACK_ROOM_IMG;
+        const photoCount = photos.length > 0 ? photos.length : 1;
+
+        return `
+          <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col justify-between ${!isAvail ? 'opacity-65' : ''}">
+            <div>
+              <div onclick="openRoomGallery('${room.id}')" class="relative h-48 bg-slate-100 cursor-pointer group overflow-hidden">
+                <img src="${coverImg}" alt="${room.room_type}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" onerror="this.src='${FALLBACK_ROOM_IMG}'" />
+                <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[11px] font-bold ${isAvail ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-white'}">
+                  ${isAvail ? 'Available' : room.status}
+                </span>
+                <span class="absolute top-3 right-3 px-2 py-0.5 rounded-md bg-slate-900/75 text-white text-[11px] font-mono">
+                  Room ${room.room_number}
+                </span>
+                <span class="absolute bottom-2.5 right-2.5 px-2.5 py-1 rounded-lg bg-slate-900/80 text-white text-[11px] font-semibold backdrop-blur-xs">
+                  View Photos (${photoCount})
+                </span>
+              </div>
+              <div class="p-4">
+                <h3 class="font-bold text-base text-slate-900">${room.room_type}</h3>
+                <p class="text-xs text-slate-500 mt-0.5">Up to ${room.max_guests || 2} Guests • Free Wi-Fi • Direct Rate</p>
+              </div>
+            </div>
+            <div class="px-4 pb-4 pt-2 border-t border-slate-100 flex items-center justify-between">
+              <div>
+                <div class="text-xs text-slate-400">${nights} night total</div>
+                <div class="text-base font-extrabold text-slate-900">${total.toLocaleString()} MMK</div>
+              </div>
+              <button ${!isAvail ? 'disabled' : ''} onclick="openBookingModal('${room.id}')" class="px-4 py-2 rounded-xl text-xs font-bold transition ${isAvail ? 'bg-slate-900 hover:bg-emerald-600 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}">
+                ${isAvail ? 'Book Now' : 'Unavailable'}
+              </button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // GALLERY LIGHTBOX FUNCTIONS
+    function openRoomGallery(roomId) {
+      const room = hotelRooms.find(r => r.id === roomId);
+      if (!room) return;
+      const photos = getRoomPhotos(room);
+      activeGalleryPhotos = photos.length > 0 ? photos : [FALLBACK_ROOM_IMG];
+      activeGalleryIndex = 0;
+
+      document.getElementById("gal-title").textContent = `${room.room_type} (Room ${room.room_number})`;
+      renderGallerySlide();
+      document.getElementById("modal-gallery").classList.remove("hidden");
+    }
+
+    function renderGallerySlide() {
+      const total = activeGalleryPhotos.length;
+      document.getElementById("gal-main-img").src = activeGalleryPhotos[activeGalleryIndex];
+      document.getElementById("gal-counter").textContent = `Photo ${activeGalleryIndex + 1} of ${total}`;
+
+      document.getElementById("gal-prev-btn").classList.toggle("hidden", total <= 1);
+      document.getElementById("gal-next-btn").classList.toggle("hidden", total <= 1);
+
+      document.getElementById("gal-thumbs").innerHTML = activeGalleryPhotos.map((url, idx) => `
+        <button onclick="setGalleryIndex(${idx})" class="w-16 h-12 rounded-lg overflow-hidden border-2 transition ${idx === activeGalleryIndex ? 'border-emerald-400 scale-105' : 'border-transparent opacity-60 hover:opacity-100'}">
+          <img src="${url}" class="w-full h-full object-cover" />
+        </button>
+      `).join("");
+    }
+
+    function stepGallery(dir) {
+      const total = activeGalleryPhotos.length;
+      activeGalleryIndex = (activeGalleryIndex + dir + total) % total;
+      renderGallerySlide();
+    }
+
+    function setGalleryIndex(idx) {
+      activeGalleryIndex = idx;
+      renderGallerySlide();
+    }
+
+    // GUEST BOOKING & LOOKUP
+    function openBookingModal(roomId) {
+      selectedRoomForBooking = hotelRooms.find(r => r.id === roomId);
+      if (!selectedRoomForBooking) return;
+      const ci = document.getElementById("guest-checkin").value;
+      const co = document.getElementById("guest-checkout").value;
+      const nights = getNights(ci, co);
+      const total = selectedRoomForBooking.price_mmk * nights;
+
+      document.getElementById("mb-room-title").textContent = `${selectedRoomForBooking.room_type} (Room ${selectedRoomForBooking.room_number})`;
+      document.getElementById("mb-dates-summary").textContent = `${ci} to ${co} (${nights} night${nights > 1 ? 's' : ''})`;
+      document.getElementById("mb-total-price").textContent = `${total.toLocaleString()} MMK`;
+      toggleSlipBox();
+      document.getElementById("modal-book").classList.remove("hidden");
+    }
+
+    function toggleSlipBox() {
+      const method = document.getElementById("mb-payment").value;
+      const box = document.getElementById("mb-wallet-info");
+      const numEl = document.getElementById("mb-wallet-number");
+      if (method === "Pay at Check-In") {
+        box.classList.add("hidden");
+      } else {
+        box.classList.remove("hidden");
+        const num = method === "KBZPay" ? (currentHotel.kbzpay_number || currentHotel.phone) : (currentHotel.wavepay_number || currentHotel.phone);
+        numEl.textContent = `${method}: ${num || 'Contact Front Desk'}`;
+      }
+    }
+
+    async function submitGuestBooking() {
+      const name = document.getElementById("mb-name").value.trim();
+      const phone = document.getElementById("mb-phone").value.trim();
+      const method = document.getElementById("mb-payment").value;
+      const slipInput = document.getElementById("mb-slip-file");
+
+      if (!name || !phone) return alert("Please enter your name and phone number.");
+      if (method !== "Pay at Check-In" && !slipInput.files[0]) {
+        return alert("Please upload your KBZPay/WavePay transfer screenshot.");
+      }
+
+      const btn = document.getElementById("mb-submit-btn");
+      btn.disabled = true;
+      btn.textContent = "Submitting Reservation...";
+
+      try {
+        let slipUrl = null;
+        if (slipInput.files[0]) {
+          slipUrl = await uploadFileToBucket(slipInput.files[0], "slips");
+        }
+
+        const ci = document.getElementById("guest-checkin").value;
+        const co = document.getElementById("guest-checkout").value;
+        const nights = getNights(ci, co);
+        const total = selectedRoomForBooking.price_mmk * nights;
+        const refCode = "DIR-" + Math.floor(1000 + Math.random() * 9000);
+
+        await sbFetch("bookings", {
+          method: "POST",
+          body: JSON.stringify({
+            hotel_id: currentHotel.id,
+            room_id: selectedRoomForBooking.id,
+            reference_code: refCode,
+            guest_name: name,
+            guest_phone: phone,
+            check_in: ci,
+            check_out: co,
+            total_mmk: total,
+            payment_method: method,
+            slip_url: slipUrl,
+            status: method === "Pay at Check-In" ? "Confirmed" : "Pending Verification"
+          })
+        });
+
+        closeModal("modal-book");
+        document.getElementById("mb-name").value = "";
+        document.getElementById("mb-phone").value = "";
+        slipInput.value = "";
+
+        await refreshHotelData();
+        document.getElementById("lookup-code-input").value = refCode;
+        openLookupModal();
+        lookupBooking();
+      } catch (err) {
+        alert("Booking error: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Confirm Direct Reservation";
+      }
+    }
+
+    function openLookupModal() {
+      document.getElementById("modal-lookup").classList.remove("hidden");
+    }
+
+    async function lookupBooking() {
+      const code = document.getElementById("lookup-code-input").value.trim().toUpperCase();
+      if (!code) return;
+      const rows = await sbFetch(`bookings?reference_code=eq.${encodeURIComponent(code)}&select=*,rooms(room_number,room_type)`);
+      const data = rows && rows[0];
+
+      const resEl = document.getElementById("lookup-result");
+      if (!data) {
+        resEl.innerHTML = `<div class="p-3 bg-rose-50 text-rose-700 rounded-xl text-xs font-semibold">No reservation found for ${code}.</div>`;
+        return;
+      }
+      resEl.innerHTML = `
+        <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1.5 text-xs">
+          <div class="flex justify-between font-bold text-emerald-950 text-sm">
+            <span>${data.reference_code}</span>
+            <span>${data.status}</span>
+          </div>
+          <div><b>Guest:</b> ${data.guest_name} (${data.guest_phone})</div>
+          <div><b>Room:</b> ${data.rooms?.room_type || ''} (${data.rooms?.room_number || ''})</div>
+          <div><b>Dates:</b> ${data.check_in} → ${data.check_out}</div>
+          <div><b>Total:</b> ${Number(data.total_mmk).toLocaleString()} MMK (${data.payment_method})</div>
+          <div class="text-[11px] text-emerald-800 pt-1">Save this reference code for fast check-in!</div>
+        </div>
+      `;
+    }
+
+    // =========================================================
+    // HOTEL FRONT-DESK DASHBOARD (?view=admin)
+    // =========================================================
+    function verifyAdminPin() {
+      const entered = document.getElementById("admin-pin-input").value.trim();
+      if (entered === (currentHotel.admin_pin || "1234")) {
+        document.getElementById("admin-pin-gate").classList.add("hidden");
+        document.getElementById("admin-workspace").classList.remove("hidden");
+        renderAdminDashboard();
+      } else {
+        alert("Incorrect Staff PIN.");
+      }
+    }
+
+    function switchAdminTab(tab) {
+      ["bookings", "rooms", "settings"].forEach(t => {
+        document.getElementById(`admin-panel-${t}`).classList.toggle("hidden", t !== tab);
+        document.getElementById(`tab-admin-${t}`).className = t === tab
+          ? "px-3.5 py-2 rounded-lg text-xs font-bold bg-slate-900 text-white"
+          : "px-3.5 py-2 rounded-lg text-xs font-bold bg-white text-slate-600 border border-slate-200";
+      });
+    }
+
+    function renderAdminDashboard() {
+      if (!currentHotel) return;
+      const confirmedRev = hotelBookings
+        .filter(b => ["Confirmed", "Checked-In", "Checked-Out"].includes(b.status))
+        .reduce((sum, b) => sum + Number(b.total_mmk || 0), 0);
+      const pendingCount = hotelBookings.filter(b => b.status === "Pending Verification").length;
+      const availCount = hotelRooms.filter(r => r.status === "Available").length;
+
+      document.getElementById("kpi-revenue").textContent = `${confirmedRev.toLocaleString()} MMK`;
+      document.getElementById("kpi-saved").textContent = `${Math.round(confirmedRev * 0.18).toLocaleString()} MMK`;
+      document.getElementById("kpi-pending").textContent = pendingCount;
+      document.getElementById("kpi-available").textContent = `${availCount} / ${hotelRooms.length}`;
+
+      const baseUrl = window.location.origin + window.location.pathname;
+      document.getElementById("share-guest-url").textContent = `${baseUrl}?hotel=${currentHotel.slug}`;
+      document.getElementById("share-admin-url").textContent = `${baseUrl}?hotel=${currentHotel.slug}&view=admin`;
+      document.getElementById("set-phone").value = currentHotel.phone || "";
+      document.getElementById("set-pin").value = currentHotel.admin_pin || "1234";
+      document.getElementById("set-kbz").value = currentHotel.kbzpay_number || "";
+      document.getElementById("set-wave").value = currentHotel.wavepay_number || "";
+
+      const tbody = document.getElementById("admin-bookings-tbody");
+      if (hotelBookings.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400 text-xs">No reservations yet.</td></tr>`;
+      } else {
+        tbody.innerHTML = hotelBookings.map(b => `
+          <tr>
+            <td class="py-3 px-4">
+              <div class="font-mono font-bold text-xs text-slate-900">${b.reference_code}</div>
+              <div class="font-semibold text-slate-800">${b.guest_name}</div>
+              <div class="text-xs text-slate-500">${b.guest_phone}</div>
+            </td>
+            <td class="py-3 px-4 text-xs">
+              <div class="font-bold text-slate-800">Room ${b.rooms?.room_number || '-'} (${b.rooms?.room_type || ''})</div>
+              <div class="text-slate-500">${b.check_in} → ${b.check_out}</div>
+            </td>
+            <td class="py-3 px-4 text-xs">
+              <div class="font-bold text-slate-900">${Number(b.total_mmk).toLocaleString()} MMK</div>
+              <div class="text-slate-500">${b.payment_method}</div>
+              ${b.slip_url ? `<a href="${b.slip_url}" target="_blank" class="inline-block mt-1 text-indigo-600 underline font-semibold">View Slip</a>` : ''}
+            </td>
+            <td class="py-3 px-4">
+              <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                b.status === 'Pending Verification' ? 'bg-amber-100 text-amber-800' :
+                b.status === 'Confirmed' ? 'bg-emerald-100 text-emerald-800' :
+                b.status === 'Checked-In' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600'
+              }">${b.status}</span>
+            </td>
+            <td class="py-3 px-4 text-right space-x-1">
+              ${b.status === 'Pending Verification' ? `<button onclick="updateBookingStatus('${b.id}', 'Confirmed', '${b.room_id}', 'Available')" class="px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-xs font-bold">Verify</button>` : ''}
+              ${b.status === 'Confirmed' ? `<button onclick="updateBookingStatus('${b.id}', 'Checked-In', '${b.room_id}', 'Occupied')" class="px-2.5 py-1 bg-blue-600 text-white rounded-lg text-xs font-bold">Check-In</button>` : ''}
+              ${b.status === 'Checked-In' ? `<button onclick="updateBookingStatus('${b.id}', 'Checked-Out', '${b.room_id}', 'Cleaning')" class="px-2.5 py-1 bg-slate-800 text-white rounded-lg text-xs font-bold">Check-Out</button>` : ''}
+            </td>
+          </tr>
+        `).join("");
+      }
+
+      // Admin Rooms Grid with up to 4 Photo Slots
+      const rGrid = document.getElementById("admin-rooms-grid");
+      rGrid.innerHTML = hotelRooms.map(r => {
+        const photos = getRoomPhotos(r);
+        const canAddMore = photos.length < MAX_ROOM_PHOTOS;
+        return `
+          <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs flex flex-col justify-between">
+            <div>
+              <!-- 4-Photo Thumbnail Strip -->
+              <div class="p-2.5 bg-slate-50 border-b border-slate-200">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="text-[11px] font-bold text-slate-600">Photos (${photos.length} / ${MAX_ROOM_PHOTOS})</span>
+                  ${canAddMore ? `
+                    <label class="px-2 py-0.5 bg-slate-900 hover:bg-emerald-600 text-white text-[11px] font-semibold rounded-md cursor-pointer transition">
+                      + Add Photo
+                      <input type="file" accept="image/*" multiple class="hidden" onchange="addMoreRoomPhotos('${r.id}', this.files)" />
+                    </label>
+                  ` : `<span class="text-[10px] font-semibold text-amber-600">Max 4 reached</span>`}
+                </div>
+                <div class="grid grid-cols-4 gap-1.5">
+                  ${[0, 1, 2, 3].map(idx => {
+                    const url = photos[idx];
+                    if (url) {
+                      return `
+                        <div class="relative h-14 rounded-lg overflow-hidden border border-slate-300 group">
+                          <img src="${url}" class="w-full h-full object-cover" />
+                          <button onclick="removeRoomPhoto('${r.id}', ${idx})" title="Remove photo" class="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center opacity-90 hover:opacity-100">&times;</button>
+                        </div>
+                      `;
+                    }
+                    return `
+                      <label class="h-14 rounded-lg border border-dashed border-slate-300 bg-white hover:bg-slate-100 flex items-center justify-center text-slate-400 text-xs cursor-pointer">
+                        +
+                        <input type="file" accept="image/*" class="hidden" onchange="addMoreRoomPhotos('${r.id}', this.files)" />
+                      </label>
+                    `;
+                  }).join("")}
+                </div>
+              </div>
+
+              <div class="p-3.5 space-y-1">
+                <div class="font-bold text-sm text-slate-900">Room ${r.room_number} – ${r.room_type}</div>
+                <div class="text-xs font-semibold text-emerald-700">${Number(r.price_mmk).toLocaleString()} MMK / night</div>
+              </div>
+            </div>
+
+            <div class="px-3.5 pb-3.5 flex gap-2">
+              <select onchange="updateRoomStatus('${r.id}', this.value)" class="flex-1 px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold bg-white">
+                ${["Available", "Occupied", "Cleaning", "Blocked"].map(st => `<option value="${st}" ${r.status === st ? 'selected' : ''}>${st}</option>`).join("")}
+              </select>
+              <button onclick="promptUpdatePrice('${r.id}', ${r.price_mmk})" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold">Edit Rate</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function addMoreRoomPhotos(roomId, fileList) {
+      if (!fileList || fileList.length === 0) return;
+      const room = hotelRooms.find(r => r.id === roomId);
+      if (!room) return;
+
+      const currentPhotos = getRoomPhotos(room);
+      const remainingSlots = MAX_ROOM_PHOTOS - currentPhotos.length;
+      if (remainingSlots <= 0) return alert("Maximum 4 photos per room allowed.");
+
+      const filesToUpload = Array.from(fileList).slice(0, remainingSlots);
+      try {
+        const uploadedUrls = [];
+        for (const f of filesToUpload) {
+          const url = await uploadFileToBucket(f, "rooms");
+          uploadedUrls.push(url);
+        }
+        const updatedGallery = [...currentPhotos, ...uploadedUrls];
+        await sbFetch(`rooms?id=eq.${roomId}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            gallery_urls: updatedGallery,
+            image_url: updatedGallery[0] || null
+          })
+        });
+        await refreshHotelData();
+      } catch (e) {
+        alert("Photo upload error: " + e.message);
+      }
+    }
+
+    async function removeRoomPhoto(roomId, photoIndex) {
+      const room = hotelRooms.find(r => r.id === roomId);
+      if (!room) return;
+      const updatedGallery = getRoomPhotos(room).filter((_, idx) => idx !== photoIndex);
+      await sbFetch(`rooms?id=eq.${roomId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          gallery_urls: updatedGallery,
+          image_url: updatedGallery[0] || null
+        })
+      });
+      await refreshHotelData();
+    }
+
+    async function updateBookingStatus(bookingId, newStatus, roomId, roomStatus) {
+      await sbFetch(`bookings?id=eq.${bookingId}`, { method: "PATCH", body: JSON.stringify({ status: newStatus }) });
+      if (roomId && roomStatus) {
+        await sbFetch(`rooms?id=eq.${roomId}`, { method: "PATCH", body: JSON.stringify({ status: roomStatus }) });
+      }
+      await refreshHotelData();
+    }
+
+    async function updateRoomStatus(roomId, status) {
+      await sbFetch(`rooms?id=eq.${roomId}`, { method: "PATCH", body: JSON.stringify({ status }) });
+      await refreshHotelData();
+    }
+
+    async function promptUpdatePrice(roomId, oldPrice) {
+      const val = prompt("Enter new nightly rate (MMK):", oldPrice);
+      if (!val || isNaN(val)) return;
+      await sbFetch(`rooms?id=eq.${roomId}`, { method: "PATCH", body: JSON.stringify({ price_mmk: parseInt(val, 10) }) });
+      await refreshHotelData();
+    }
+
+    async function adminAddRoom() {
+      const no = document.getElementById("new-room-no").value.trim();
+      const type = document.getElementById("new-room-type").value.trim();
+      const price = parseInt(document.getElementById("new-room-price").value, 10);
+      const files = Array.from(document.getElementById("new-room-photo").files || []).slice(0, MAX_ROOM_PHOTOS);
+      if (!no || !type || !price) return alert("Enter room number, type, and price.");
+
+      const btn = document.getElementById("btn-admin-add-room");
+      btn.disabled = true;
+      btn.textContent = "Saving...";
+
+      try {
+        const uploadedUrls = [];
+        for (const f of files) {
+          uploadedUrls.push(await uploadFileToBucket(f, "rooms"));
+        }
+
+        await sbFetch("rooms", {
+          method: "POST",
+          body: JSON.stringify({
+            hotel_id: currentHotel.id,
+            room_number: no,
+            room_type: type,
+            price_mmk: price,
+            image_url: uploadedUrls[0] || null,
+            gallery_urls: uploadedUrls,
+            status: "Available"
+          })
+        });
+        document.getElementById("new-room-no").value = "";
+        document.getElementById("new-room-type").value = "";
+        document.getElementById("new-room-price").value = "";
+        document.getElementById("new-room-photo").value = "";
+        await refreshHotelData();
+      } catch (e) {
+        alert("Error adding room: " + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "+ Add Room";
+      }
+    }
+
+    async function saveHotelSettings() {
+      const updates = {
+        phone: document.getElementById("set-phone").value.trim(),
+        admin_pin: document.getElementById("set-pin").value.trim(),
+        kbzpay_number: document.getElementById("set-kbz").value.trim(),
+        wavepay_number: document.getElementById("set-wave").value.trim()
+      };
+      try {
+        await sbFetch(`hotels?id=eq.${currentHotel.id}`, { method: "PATCH", body: JSON.stringify(updates) });
+        currentHotel = { ...currentHotel, ...updates };
+        alert("Hotel settings saved!");
+      } catch (e) {
+        alert("Error saving: " + e.message);
+      }
+    }
+
+    function openWalkInModal() {
+      const sel = document.getElementById("wi-room");
+      sel.innerHTML = hotelRooms.map(r => `<option value="${r.id}">Room ${r.room_number} – ${r.room_type} (${Number(r.price_mmk).toLocaleString()} MMK)</option>`).join("");
+      document.getElementById("modal-walkin").classList.remove("hidden");
+    }
+
+    async function submitWalkIn() {
+      const roomId = document.getElementById("wi-room").value;
+      const name = document.getElementById("wi-name").value.trim() || "Walk-In Guest";
+      const phone = document.getElementById("wi-phone").value.trim() || "-";
+      const ci = document.getElementById("wi-checkin").value;
+      const co = document.getElementById("wi-checkout").value;
+      const room = hotelRooms.find(r => r.id === roomId);
+      const total = (room ? room.price_mmk : 0) * getNights(ci, co);
+
+      await sbFetch("bookings", {
+        method: "POST",
+        body: JSON.stringify({
+          hotel_id: currentHotel.id,
+          room_id: roomId,
+          reference_code: "WLK-" + Math.floor(1000 + Math.random() * 9000),
+          guest_name: name,
+          guest_phone: phone,
+          check_in: ci,
+          check_out: co,
+          total_mmk: total,
+          payment_method: "Walk-In / Viber",
+          status: "Confirmed"
+        })
+      });
+      closeModal("modal-walkin");
+      await refreshHotelData();
+    }
+
+    // SUPER-ADMIN PORTAL FUNCTIONS
+    async function unlockSuperAdmin() {
+      const pass = document.getElementById("super-pass-input").value.trim();
+      if (pass !== MASTER_SUPER_ADMIN_PASS) return alert("Invalid Master Password.");
+      document.getElementById("super-login-box").classList.add("hidden");
+      document.getElementById("super-workspace").classList.remove("hidden");
+      await loadSuperAdminHotels();
+    }
+
+    async function loadSuperAdminHotels() {
+      try {
+        const list = await sbFetch("hotels?select=*&order=created_at.desc") || [];
+        document.getElementById("super-hotel-count").textContent = `${list.length} Hotels`;
+
+        const sel = document.getElementById("sa-hotel-select");
+        sel.innerHTML = list.map(h => `<option value="${h.id}">${h.name} (${h.slug})</option>`).join("");
+
+        const baseUrl = window.location.origin + window.location.pathname;
+        document.getElementById("sa-hotels-list").innerHTML = list.map(h => `
+          <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="font-bold text-sm text-slate-900">${h.name}</div>
+                <div class="text-xs text-slate-500">${h.location || ''} • PIN: <b>${h.admin_pin}</b></div>
+              </div>
+              <button onclick="superToggleHotel('${h.id}', ${!h.is_active})" class="px-2.5 py-1 rounded-full text-[11px] font-bold ${h.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+                ${h.is_active ? 'Active' : 'Paused'}
+              </button>
+            </div>
+            <div class="flex gap-2 pt-1 text-[11px] font-semibold">
+              <a href="${baseUrl}?hotel=${h.slug}" target="_blank" class="px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100">Guest Link</a>
+              <a href="${baseUrl}?hotel=${h.slug}&view=admin" target="_blank" class="px-2.5 py-1 bg-slate-900 text-white rounded-lg hover:bg-slate-800">Front-Desk</a>
+            </div>
+          </div>
+        `).join("");
+      } catch (e) {
+        alert("Failed to load hotels: " + e.message);
+      }
+    }
+
+    async function superCreateHotel() {
+      const name = document.getElementById("sa-name").value.trim();
+      const slug = document.getElementById("sa-slug").value.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
+      const loc = document.getElementById("sa-loc").value.trim();
+      const kbz = document.getElementById("sa-kbz").value.trim();
+      const pin = document.getElementById("sa-pin").value.trim() || "1234";
+
+      if (!name || !slug) return alert("Hotel Name and URL Slug are required.");
+
+      try {
+        await sbFetch("hotels", {
+          method: "POST",
+          body: JSON.stringify({
+            name, slug, location: loc, phone: kbz, kbzpay_number: kbz, wavepay_number: kbz, admin_pin: pin, is_active: true
+          })
+        });
+        document.getElementById("sa-name").value = "";
+        document.getElementById("sa-slug").value = "";
+        document.getElementById("sa-loc").value = "";
+        document.getElementById("sa-kbz").value = "";
+        await loadSuperAdminHotels();
+        alert(`Created live workspace for ${name}!`);
+      } catch (e) {
+        alert("Error creating hotel: " + e.message);
+      }
+    }
+
+    async function superAddRoom() {
+      const hotelId = document.getElementById("sa-hotel-select").value;
+      const no = document.getElementById("sa-room-no").value.trim();
+      const type = document.getElementById("sa-room-type").value.trim();
+      const price = parseInt(document.getElementById("sa-room-price").value, 10);
+      const files = Array.from(document.getElementById("sa-room-photo").files || []).slice(0, MAX_ROOM_PHOTOS);
+
+      if (!hotelId || !no || !type || !price) return alert("Fill in hotel, room number, type, and rate.");
+
+      const btn = document.getElementById("sa-add-room-btn");
+      btn.disabled = true;
+      btn.textContent = "Uploading...";
+
+      try {
+        const uploadedUrls = [];
+        for (const f of files) {
+          uploadedUrls.push(await uploadFileToBucket(f, "rooms"));
+        }
+
+        await sbFetch("rooms", {
+          method: "POST",
+          body: JSON.stringify({
+            hotel_id: hotelId,
+            room_number: no,
+            room_type: type,
+            price_mmk: price,
+            image_url: uploadedUrls[0] || null,
+            gallery_urls: uploadedUrls,
+            status: "Available"
+          })
+        });
+
+        document.getElementById("sa-room-no").value = "";
+        document.getElementById("sa-room-type").value = "";
+        document.getElementById("sa-room-price").value = "";
+        document.getElementById("sa-room-photo").value = "";
+        alert(`Room and ${uploadedUrls.length} photo(s) saved!`);
+      } catch (e) {
+        alert("Error: " + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Save Room & Photos";
+      }
+    }
+
+    async function superToggleHotel(hotelId, newState) {
+      await sbFetch(`hotels?id=eq.${hotelId}`, { method: "PATCH", body: JSON.stringify({ is_active: newState }) });
+      await loadSuperAdminHotels();
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add("hidden");
+    }
+  </script>
+</body>
+</html>
