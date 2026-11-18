@@ -5,10 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>StayDirect Myanmar – Direct Hotel Booking & Front-Desk Cloud</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+    body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc; }
     .fade-in { animation: fadeIn 0.25s ease-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
   </style>
@@ -43,10 +41,10 @@
     <!-- LOADING STATE -->
     <div id="view-loading" class="text-center py-20">
       <div class="inline-block w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-3"></div>
-      <p class="text-sm text-slate-500 font-medium">Connecting to StayDirect Cloud...</p>
+      <p class="text-sm text-slate-500 font-medium" id="loading-status-text">Connecting to StayDirect Cloud...</p>
     </div>
 
-    <!-- PAUSED / NOT FOUND HOTEL STATE -->
+    <!-- PAUSED / ERROR STATE -->
     <div id="view-inactive" class="hidden max-w-md mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center my-12">
       <div class="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-4 text-xl font-bold">!</div>
       <h2 class="text-lg font-bold text-slate-900 mb-2">Booking Portal Unavailable</h2>
@@ -58,7 +56,6 @@
     <!-- 1. GUEST SELF-SERVICE BOOKING VIEW                        -->
     <!-- ========================================================= -->
     <section id="view-guest" class="hidden fade-in space-y-6">
-      <!-- Hero Banner -->
       <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 text-white rounded-2xl p-6 sm:p-8 shadow-sm">
         <span class="inline-block px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full text-xs font-semibold mb-3">
           Official Direct Rate • Best Price Guaranteed
@@ -66,8 +63,989 @@
         <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2" id="hero-hotel-name">Welcome</h1>
         <p class="text-sm text-slate-300 max-w-2xl" id="hero-hotel-sub">Book directly with zero middleman fees. Pay easily via KBZPay, WavePay, or at check-in.</p>
 
-        <!-- Date & Status Lookup Bar -->
         <div class="mt-6 bg-white/10 backdrop-blur-sm border border-white/15 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div>
             <label class="block text-[11px] uppercase tracking-wider text-slate-300 font-semibold mb-1">Check-In</label>
-            <input type="date" id="guest-checkin" onchange="recalcTotals()" class="w-full px-3 py-2 rounded-lg
+            <input type="date" id="guest-checkin" onchange="recalcTotals()" class="w-full px-3 py-2 rounded-lg bg-white text-slate-900 text-sm font-medium focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-[11px] uppercase tracking-wider text-slate-300 font-semibold mb-1">Check-Out</label>
+            <input type="date" id="guest-checkout" onchange="recalcTotals()" class="w-full px-3 py-2 rounded-lg bg-white text-slate-900 text-sm font-medium focus:outline-none" />
+          </div>
+          <div class="flex flex-col justify-end">
+            <div class="px-3 py-2 rounded-lg bg-slate-900/60 border border-white/10 text-sm font-semibold text-emerald-300 text-center" id="guest-nights-label">
+              1 Night Stay
+            </div>
+          </div>
+          <div class="flex flex-col justify-end">
+            <button onclick="openLookupModal()" class="w-full px-3 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-semibold border border-white/20 transition">
+              Check My Booking
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-slate-900">Select Your Room</h2>
+          <span class="text-xs text-slate-500" id="guest-room-count">Loading rooms...</span>
+        </div>
+        <div id="guest-rooms-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- 2. HOTEL FRONT-DESK & MANAGER DASHBOARD                   -->
+    <!-- ========================================================= -->
+    <section id="view-admin" class="hidden fade-in space-y-6">
+      <div id="admin-pin-gate" class="max-w-sm mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-center my-8">
+        <div class="w-11 h-11 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center mx-auto mb-3 font-bold">PIN</div>
+        <h2 class="text-lg font-bold text-slate-900">Front-Desk Staff Access</h2>
+        <p class="text-xs text-slate-500 mt-1 mb-4">Enter your hotel's Staff PIN to manage bookings & rooms (Demo PIN: 1234)</p>
+        <input type="password" id="admin-pin-input" placeholder="Enter PIN" maxlength="8" class="w-full text-center tracking-widest text-lg font-bold px-4 py-2.5 border border-slate-300 rounded-xl mb-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none" onkeydown="if(event.key==='Enter') verifyAdminPin()" />
+        <button onclick="verifyAdminPin()" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-sm transition">
+          Unlock Dashboard
+        </button>
+      </div>
+
+      <div id="admin-workspace" class="hidden space-y-6">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <div class="text-xs font-medium text-slate-500">Direct Revenue (Confirmed)</div>
+            <div class="text-xl font-extrabold text-slate-900 mt-1" id="kpi-revenue">0 MMK</div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <div class="text-xs font-medium text-slate-500">OTA Commission Saved (18%)</div>
+            <div class="text-xl font-extrabold text-emerald-600 mt-1" id="kpi-saved">0 MMK</div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <div class="text-xs font-medium text-slate-500">Pending Slip Verification</div>
+            <div class="text-xl font-extrabold text-amber-600 mt-1" id="kpi-pending">0</div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <div class="text-xs font-medium text-slate-500">Available Rooms</div>
+            <div class="text-xl font-extrabold text-slate-900 mt-1" id="kpi-available">0 / 0</div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+          <div class="flex gap-2">
+            <button onclick="switchAdminTab('bookings')" id="tab-admin-bookings" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-slate-900 text-white">Bookings & Slips</button>
+            <button onclick="switchAdminTab('rooms')" id="tab-admin-rooms" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-white text-slate-600 border border-slate-200">Rooms, Rates & Photos</button>
+            <button onclick="switchAdminTab('settings')" id="tab-admin-settings" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-white text-slate-600 border border-slate-200">Payment & Link Settings</button>
+          </div>
+          <button onclick="openWalkInModal()" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm">
+            + Walk-In / Viber Booking
+          </button>
+        </div>
+
+        <div id="admin-panel-bookings" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-500">
+                  <th class="py-3 px-4">Ref / Guest</th>
+                  <th class="py-3 px-4">Room & Dates</th>
+                  <th class="py-3 px-4">Amount & Payment</th>
+                  <th class="py-3 px-4">Status</th>
+                  <th class="py-3 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="admin-bookings-tbody" class="divide-y divide-slate-100 text-sm"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="admin-panel-rooms" class="hidden space-y-4">
+          <div class="bg-white p-4 rounded-xl border border-slate-200 flex flex-wrap items-end gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Room No.</label>
+              <input type="text" id="new-room-no" placeholder="e.g. 302" class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-28" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Room Category</label>
+              <input type="text" id="new-room-type" placeholder="e.g. Deluxe Double" class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-48" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Nightly Rate (MMK)</label>
+              <input type="number" id="new-room-price" placeholder="95000" class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-36" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Room Photo (Optional)</label>
+              <input type="file" id="new-room-photo" accept="image/*" class="text-xs text-slate-500" />
+            </div>
+            <button onclick="adminAddRoom()" class="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-slate-800">
+              + Add Room
+            </button>
+          </div>
+          <div id="admin-rooms-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>
+
+        <div id="admin-panel-settings" class="hidden bg-white p-6 rounded-2xl border border-slate-200 max-w-2xl space-y-4">
+          <h3 class="font-bold text-base text-slate-900">Hotel Payment & Direct Link Settings</h3>
+          <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs space-y-1">
+            <div class="font-bold text-emerald-900">Your Guest Direct Booking Link (Put in Facebook / Viber Bio):</div>
+            <div class="font-mono text-emerald-800 break-all select-all" id="share-guest-url"></div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Hotel Phone / Viber</label>
+              <input type="text" id="set-phone" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Front-Desk Staff PIN</label>
+              <input type="text" id="set-pin" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">KBZPay Receiving Number</label>
+              <input type="text" id="set-kbz" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">WavePay Receiving Number</label>
+              <input type="text" id="set-wave" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+            </div>
+          </div>
+          <button onclick="saveHotelSettings()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl">
+            Save Settings
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- 3. MASTER SUPER-ADMIN PORTAL (?view=superadmin)           -->
+    <!-- ========================================================= -->
+    <section id="view-superadmin" class="hidden fade-in space-y-6">
+      <div id="super-login-box" class="max-w-sm mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-center my-8">
+        <span class="px-2.5 py-1 bg-indigo-100 text-indigo-700 text-[11px] font-bold rounded-full">PLATFORM OWNER</span>
+        <h2 class="text-lg font-bold text-slate-900 mt-2">Master Super-Admin</h2>
+        <p class="text-xs text-slate-500 mt-1 mb-4">Onboard new hotels, upload room photos & manage licenses</p>
+        <input type="password" id="super-pass-input" placeholder="Master Password" class="w-full text-center px-4 py-2.5 border border-slate-300 rounded-xl mb-3 text-sm" onkeydown="if(event.key==='Enter') unlockSuperAdmin()" />
+        <button onclick="unlockSuperAdmin()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm">
+          Access Super-Admin
+        </button>
+      </div>
+
+      <div id="super-workspace" class="hidden space-y-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-xl font-extrabold text-slate-900">StayDirect Myanmar – Master Control</h1>
+            <p class="text-xs text-slate-500">Create client workspaces, upload room photos, and toggle license status.</p>
+          </div>
+          <span class="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full" id="super-hotel-count">0 Hotels</span>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+            <h3 class="font-bold text-sm text-slate-900 border-b pb-2">1. Onboard New Hotel Client</h3>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Hotel Name *</label>
+              <input type="text" id="sa-name" placeholder="e.g. Kalaw Pine Lodge" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">URL Slug * (lowercase, no spaces)</label>
+              <input type="text" id="sa-slug" placeholder="e.g. kalaw-pine" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Township / City</label>
+              <input type="text" id="sa-loc" placeholder="e.g. Kalaw, Shan State" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">KBZPay No.</label>
+                <input type="text" id="sa-kbz" placeholder="09..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Staff PIN</label>
+                <input type="text" id="sa-pin" value="1234" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+              </div>
+            </div>
+            <button onclick="superCreateHotel()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl">
+              + Create Live Hotel Workspace
+            </button>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+            <h3 class="font-bold text-sm text-slate-900 border-b pb-2">2. Add Rooms & Photos to Hotel</h3>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Select Client Hotel</label>
+              <select id="sa-hotel-select" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"></select>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Room Number</label>
+                <input type="text" id="sa-room-no" placeholder="101" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Rate (MMK)</label>
+                <input type="number" id="sa-room-price" placeholder="85000" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Room Type Name</label>
+              <input type="text" id="sa-room-type" placeholder="Deluxe Garden View" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Upload Room Photo</label>
+              <input type="file" id="sa-room-photo" accept="image/*" class="w-full text-xs text-slate-500" />
+            </div>
+            <button onclick="superAddRoom()" id="sa-add-room-btn" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl">
+              Save Room & Photo
+            </button>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+            <h3 class="font-bold text-sm text-slate-900 border-b pb-2">3. Client Hotels & Licenses</h3>
+            <div id="sa-hotels-list" class="space-y-3 max-h-[420px] overflow-y-auto pr-1"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- GUEST BOOKING MODAL -->
+  <div id="modal-book" class="hidden fixed inset-0 bg-slate-950/60 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b pb-3">
+        <div>
+          <h3 class="font-bold text-base text-slate-900" id="mb-room-title">Book Room</h3>
+          <p class="text-xs text-slate-500" id="mb-dates-summary"></p>
+        </div>
+        <button onclick="closeModal('modal-book')" class="text-slate-400 hover:text-slate-700 font-bold text-lg">&times;</button>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Guest Full Name *</label>
+          <input type="text" id="mb-name" placeholder="e.g. U Kyaw Zin" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Phone / Viber Number *</label>
+          <input type="tel" id="mb-phone" placeholder="09..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Payment Method</label>
+          <select id="mb-payment" onchange="toggleSlipBox()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
+            <option value="KBZPay">KBZPay Transfer</option>
+            <option value="WavePay">WavePay Transfer</option>
+            <option value="Pay at Check-In">Pay at Check-In (Cash/Card)</option>
+          </select>
+        </div>
+
+        <div id="mb-wallet-info" class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-2">
+          <div class="font-semibold text-slate-700">Transfer Deposit to Hotel Account:</div>
+          <div class="font-mono font-bold text-emerald-700 text-sm" id="mb-wallet-number"></div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Upload Payment Slip Screenshot *</label>
+            <input type="file" id="mb-slip-file" accept="image/*" class="w-full text-xs text-slate-600" />
+          </div>
+        </div>
+
+        <div class="p-3 bg-emerald-50 rounded-xl flex items-center justify-between">
+          <span class="text-xs font-semibold text-emerald-900">Total Direct Price</span>
+          <span class="text-base font-extrabold text-emerald-700" id="mb-total-price">0 MMK</span>
+        </div>
+      </div>
+
+      <button onclick="submitGuestBooking()" id="mb-submit-btn" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm shadow-sm">
+        Confirm Direct Reservation
+      </button>
+    </div>
+  </div>
+
+  <!-- LOOKUP MODAL -->
+  <div id="modal-lookup" class="hidden fixed inset-0 bg-slate-950/60 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+      <div class="flex items-center justify-between border-b pb-3">
+        <h3 class="font-bold text-base text-slate-900">Reservation Status</h3>
+        <button onclick="closeModal('modal-lookup')" class="text-slate-400 hover:text-slate-700 font-bold text-lg">&times;</button>
+      </div>
+      <div class="flex gap-2">
+        <input type="text" id="lookup-code-input" placeholder="Enter Ref (e.g. DIR-4821)" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm uppercase font-mono" />
+        <button onclick="lookupBooking()" class="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg">Search</button>
+      </div>
+      <div id="lookup-result" class="text-sm"></div>
+    </div>
+  </div>
+
+  <!-- WALK-IN MODAL -->
+  <div id="modal-walkin" class="hidden fixed inset-0 bg-slate-950/60 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+      <div class="flex items-center justify-between border-b pb-3">
+        <h3 class="font-bold text-base text-slate-900">Log Walk-In / Viber Reservation</h3>
+        <button onclick="closeModal('modal-walkin')" class="text-slate-400 hover:text-slate-700 font-bold text-lg">&times;</button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Select Room</label>
+          <select id="wi-room" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"></select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Guest Name</label>
+          <input type="text" id="wi-name" placeholder="Guest Name" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Phone Number</label>
+          <input type="tel" id="wi-phone" placeholder="09..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Check-In</label>
+            <input type="date" id="wi-checkin" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Check-Out</label>
+            <input type="date" id="wi-checkout" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+          </div>
+        </div>
+      </div>
+      <button onclick="submitWalkIn()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm">
+        Save Confirmed Booking
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- ZERO-CDN DIRECT SUPABASE REST CLIENT (WORKS EVERYWHERE)   -->
+  <!-- ========================================================= -->
+  <script>
+    const SUPABASE_URL = "https://xrwqbdjvuztjgkknsank.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_XdUFQkfZs6lkq2yxkXQBdQ_CKWe0wOD";
+    const MASTER_SUPER_ADMIN_PASS = "WYKK2026";
+    const STORAGE_BUCKET = "payment-slips";
+
+    // Native Fetch Helper for Supabase REST API (No external CDN dependency!)
+    async function sbFetch(path, options = {}) {
+      const headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+      };
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { ...options, headers });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || `HTTP ${res.status}`);
+      }
+      const text = await res.text();
+      return text ? JSON.parse(text) : null;
+    }
+
+    async function uploadFileToBucket(file, folder) {
+      const ext = file.name.split(".").pop() || "jpg";
+      const filePath = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
+      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${filePath}`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": `Bearer ${SUPABASE_KEY}`,
+          "Content-Type": file.type || "image/jpeg"
+        },
+        body: file
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error("Upload failed: " + errText);
+      }
+      return `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${filePath}`;
+    }
+
+    let currentHotel = null;
+    let hotelRooms = [];
+    let hotelBookings = [];
+    let selectedRoomForBooking = null;
+
+    const FALLBACK_ROOM_IMG = "https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=800&q=80";
+
+    window.addEventListener("DOMContentLoaded", async () => {
+      initDefaultDates();
+      const params = new URLSearchParams(window.location.search);
+      const view = params.get("view");
+      const slug = params.get("hotel") || "yangon-boutique";
+
+      if (view === "superadmin") {
+        document.getElementById("view-loading").classList.add("hidden");
+        document.getElementById("nav-mode-buttons").classList.add("hidden");
+        document.getElementById("view-superadmin").classList.remove("hidden");
+        return;
+      }
+
+      await loadHotelWorkspace(slug, view === "admin" ? "admin" : "guest");
+    });
+
+    function initDefaultDates() {
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const fmt = d => d.toISOString().split("T")[0];
+      document.getElementById("guest-checkin").value = fmt(today);
+      document.getElementById("guest-checkout").value = fmt(tomorrow);
+      document.getElementById("wi-checkin").value = fmt(today);
+      document.getElementById("wi-checkout").value = fmt(tomorrow);
+    }
+
+    function getNights(inStr, outStr) {
+      const diff = Math.round((new Date(outStr) - new Date(inStr)) / (1000 * 60 * 60 * 24));
+      return diff > 0 ? diff : 1;
+    }
+
+    function recalcTotals() {
+      const nights = getNights(
+        document.getElementById("guest-checkin").value,
+        document.getElementById("guest-checkout").value
+      );
+      document.getElementById("guest-nights-label").textContent = `${nights} Night${nights > 1 ? 's' : ''} Stay`;
+      renderGuestRooms();
+    }
+
+    async function loadHotelWorkspace(slug, initialMode) {
+      try {
+        const rows = await sbFetch(`hotels?slug=eq.${encodeURIComponent(slug)}&select=*`);
+        const hotel = rows && rows[0];
+        document.getElementById("view-loading").classList.add("hidden");
+
+        if (!hotel || !hotel.is_active) {
+          document.getElementById("view-inactive").classList.remove("hidden");
+          return;
+        }
+
+        currentHotel = hotel;
+        document.getElementById("nav-hotel-name").textContent = hotel.name;
+        document.getElementById("nav-hotel-location").textContent = hotel.location || "Myanmar";
+        document.getElementById("hero-hotel-name").textContent = hotel.name;
+        document.getElementById("hero-hotel-sub").textContent = `${hotel.location || ''} • Direct Reservation & Instant Confirmation (${hotel.phone || ''})`;
+
+        await refreshHotelData();
+        switchMode(initialMode);
+      } catch (err) {
+        document.getElementById("view-loading").classList.add("hidden");
+        document.getElementById("inactive-msg").textContent = "Connection error: " + err.message;
+        document.getElementById("view-inactive").classList.remove("hidden");
+      }
+    }
+
+    async function refreshHotelData() {
+      if (!currentHotel) return;
+      const [roomsData, bookingsData] = await Promise.all([
+        sbFetch(`rooms?hotel_id=eq.${currentHotel.id}&select=*&order=room_number.asc`),
+        sbFetch(`bookings?hotel_id=eq.${currentHotel.id}&select=*,rooms(room_number,room_type)&order=created_at.desc`)
+      ]);
+      hotelRooms = roomsData || [];
+      hotelBookings = bookingsData || [];
+      renderGuestRooms();
+      renderAdminDashboard();
+    }
+
+    function switchMode(mode) {
+      document.getElementById("view-guest").classList.toggle("hidden", mode !== "guest");
+      document.getElementById("view-admin").classList.toggle("hidden", mode !== "admin");
+      const btnG = document.getElementById("btn-mode-guest");
+      const btnA = document.getElementById("btn-mode-admin");
+      if (mode === "guest") {
+        btnG.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 text-slate-950 transition";
+        btnA.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-200 hover:bg-slate-700 transition";
+      } else {
+        btnA.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 text-slate-950 transition";
+        btnG.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-200 hover:bg-slate-700 transition";
+      }
+    }
+
+    function renderGuestRooms() {
+      const grid = document.getElementById("guest-rooms-grid");
+      const availableRooms = hotelRooms.filter(r => r.status === "Available");
+      document.getElementById("guest-room-count").textContent = `${availableRooms.length} rooms available`;
+
+      const nights = getNights(
+        document.getElementById("guest-checkin").value,
+        document.getElementById("guest-checkout").value
+      );
+
+      if (hotelRooms.length === 0) {
+        grid.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400 text-sm">No rooms configured yet for this property.</div>`;
+        return;
+      }
+
+      grid.innerHTML = hotelRooms.map(room => {
+        const isAvail = room.status === "Available";
+        const total = room.price_mmk * nights;
+        const imgSrc = room.image_url || FALLBACK_ROOM_IMG;
+        return `
+          <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col justify-between ${!isAvail ? 'opacity-65' : ''}">
+            <div>
+              <div class="relative h-44 bg-slate-100">
+                <img src="${imgSrc}" alt="${room.room_type}" class="w-full h-full object-cover" onerror="this.src='${FALLBACK_ROOM_IMG}'" />
+                <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[11px] font-bold ${isAvail ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-white'}">
+                  ${isAvail ? 'Available' : room.status}
+                </span>
+                <span class="absolute top-3 right-3 px-2 py-0.5 rounded-md bg-slate-900/75 text-white text-[11px] font-mono">
+                  Room ${room.room_number}
+                </span>
+              </div>
+              <div class="p-4">
+                <h3 class="font-bold text-base text-slate-900">${room.room_type}</h3>
+                <p class="text-xs text-slate-500 mt-0.5">Up to ${room.max_guests || 2} Guests • Free Wi-Fi • Direct Rate</p>
+              </div>
+            </div>
+            <div class="px-4 pb-4 pt-2 border-t border-slate-100 flex items-center justify-between">
+              <div>
+                <div class="text-xs text-slate-400">${nights} night total</div>
+                <div class="text-base font-extrabold text-slate-900">${total.toLocaleString()} MMK</div>
+              </div>
+              <button ${!isAvail ? 'disabled' : ''} onclick="openBookingModal('${room.id}')" class="px-4 py-2 rounded-xl text-xs font-bold transition ${isAvail ? 'bg-slate-900 hover:bg-emerald-600 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}">
+                ${isAvail ? 'Book Now' : 'Unavailable'}
+              </button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function openBookingModal(roomId) {
+      selectedRoomForBooking = hotelRooms.find(r => r.id === roomId);
+      if (!selectedRoomForBooking) return;
+      const ci = document.getElementById("guest-checkin").value;
+      const co = document.getElementById("guest-checkout").value;
+      const nights = getNights(ci, co);
+      const total = selectedRoomForBooking.price_mmk * nights;
+
+      document.getElementById("mb-room-title").textContent = `${selectedRoomForBooking.room_type} (Room ${selectedRoomForBooking.room_number})`;
+      document.getElementById("mb-dates-summary").textContent = `${ci} to ${co} (${nights} night${nights > 1 ? 's' : ''})`;
+      document.getElementById("mb-total-price").textContent = `${total.toLocaleString()} MMK`;
+      toggleSlipBox();
+      document.getElementById("modal-book").classList.remove("hidden");
+    }
+
+    function toggleSlipBox() {
+      const method = document.getElementById("mb-payment").value;
+      const box = document.getElementById("mb-wallet-info");
+      const numEl = document.getElementById("mb-wallet-number");
+      if (method === "Pay at Check-In") {
+        box.classList.add("hidden");
+      } else {
+        box.classList.remove("hidden");
+        const num = method === "KBZPay" ? (currentHotel.kbzpay_number || currentHotel.phone) : (currentHotel.wavepay_number || currentHotel.phone);
+        numEl.textContent = `${method}: ${num || 'Contact Front Desk'}`;
+      }
+    }
+
+    async function submitGuestBooking() {
+      const name = document.getElementById("mb-name").value.trim();
+      const phone = document.getElementById("mb-phone").value.trim();
+      const method = document.getElementById("mb-payment").value;
+      const slipInput = document.getElementById("mb-slip-file");
+
+      if (!name || !phone) return alert("Please enter your name and phone number.");
+      if (method !== "Pay at Check-In" && !slipInput.files[0]) {
+        return alert("Please upload your KBZPay/WavePay transfer screenshot.");
+      }
+
+      const btn = document.getElementById("mb-submit-btn");
+      btn.disabled = true;
+      btn.textContent = "Submitting Reservation...";
+
+      try {
+        let slipUrl = null;
+        if (slipInput.files[0]) {
+          slipUrl = await uploadFileToBucket(slipInput.files[0], "slips");
+        }
+
+        const ci = document.getElementById("guest-checkin").value;
+        const co = document.getElementById("guest-checkout").value;
+        const nights = getNights(ci, co);
+        const total = selectedRoomForBooking.price_mmk * nights;
+        const refCode = "DIR-" + Math.floor(1000 + Math.random() * 9000);
+
+        await sbFetch("bookings", {
+          method: "POST",
+          body: JSON.stringify({
+            hotel_id: currentHotel.id,
+            room_id: selectedRoomForBooking.id,
+            reference_code: refCode,
+            guest_name: name,
+            guest_phone: phone,
+            check_in: ci,
+            check_out: co,
+            total_mmk: total,
+            payment_method: method,
+            slip_url: slipUrl,
+            status: method === "Pay at Check-In" ? "Confirmed" : "Pending Verification"
+          })
+        });
+
+        closeModal("modal-book");
+        document.getElementById("mb-name").value = "";
+        document.getElementById("mb-phone").value = "";
+        slipInput.value = "";
+
+        await refreshHotelData();
+        document.getElementById("lookup-code-input").value = refCode;
+        openLookupModal();
+        lookupBooking();
+      } catch (err) {
+        alert("Booking error: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Confirm Direct Reservation";
+      }
+    }
+
+    function openLookupModal() {
+      document.getElementById("modal-lookup").classList.remove("hidden");
+    }
+
+    async function lookupBooking() {
+      const code = document.getElementById("lookup-code-input").value.trim().toUpperCase();
+      if (!code) return;
+      const rows = await sbFetch(`bookings?reference_code=eq.${encodeURIComponent(code)}&select=*,rooms(room_number,room_type)`);
+      const data = rows && rows[0];
+
+      const resEl = document.getElementById("lookup-result");
+      if (!data) {
+        resEl.innerHTML = `<div class="p-3 bg-rose-50 text-rose-700 rounded-xl text-xs font-semibold">No reservation found for ${code}.</div>`;
+        return;
+      }
+      resEl.innerHTML = `
+        <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1.5 text-xs">
+          <div class="flex justify-between font-bold text-emerald-950 text-sm">
+            <span>${data.reference_code}</span>
+            <span>${data.status}</span>
+          </div>
+          <div><b>Guest:</b> ${data.guest_name} (${data.guest_phone})</div>
+          <div><b>Room:</b> ${data.rooms?.room_type || ''} (${data.rooms?.room_number || ''})</div>
+          <div><b>Dates:</b> ${data.check_in} → ${data.check_out}</div>
+          <div><b>Total:</b> ${Number(data.total_mmk).toLocaleString()} MMK (${data.payment_method})</div>
+          <div class="text-[11px] text-emerald-800 pt-1">Save this reference code for fast check-in!</div>
+        </div>
+      `;
+    }
+
+    function verifyAdminPin() {
+      const entered = document.getElementById("admin-pin-input").value.trim();
+      if (entered === (currentHotel.admin_pin || "1234")) {
+        document.getElementById("admin-pin-gate").classList.add("hidden");
+        document.getElementById("admin-workspace").classList.remove("hidden");
+        renderAdminDashboard();
+      } else {
+        alert("Incorrect Staff PIN.");
+      }
+    }
+
+    function switchAdminTab(tab) {
+      ["bookings", "rooms", "settings"].forEach(t => {
+        document.getElementById(`admin-panel-${t}`).classList.toggle("hidden", t !== tab);
+        document.getElementById(`tab-admin-${t}`).className = t === tab
+          ? "px-3.5 py-2 rounded-lg text-xs font-bold bg-slate-900 text-white"
+          : "px-3.5 py-2 rounded-lg text-xs font-bold bg-white text-slate-600 border border-slate-200";
+      });
+    }
+
+    function renderAdminDashboard() {
+      if (!currentHotel) return;
+      const confirmedRev = hotelBookings
+        .filter(b => ["Confirmed", "Checked-In", "Checked-Out"].includes(b.status))
+        .reduce((sum, b) => sum + Number(b.total_mmk || 0), 0);
+      const pendingCount = hotelBookings.filter(b => b.status === "Pending Verification").length;
+      const availCount = hotelRooms.filter(r => r.status === "Available").length;
+
+      document.getElementById("kpi-revenue").textContent = `${confirmedRev.toLocaleString()} MMK`;
+      document.getElementById("kpi-saved").textContent = `${Math.round(confirmedRev * 0.18).toLocaleString()} MMK`;
+      document.getElementById("kpi-pending").textContent = pendingCount;
+      document.getElementById("kpi-available").textContent = `${availCount} / ${hotelRooms.length}`;
+
+      const baseUrl = window.location.origin + window.location.pathname;
+      document.getElementById("share-guest-url").textContent = `${baseUrl}?hotel=${currentHotel.slug}`;
+      document.getElementById("set-phone").value = currentHotel.phone || "";
+      document.getElementById("set-pin").value = currentHotel.admin_pin || "1234";
+      document.getElementById("set-kbz").value = currentHotel.kbzpay_number || "";
+      document.getElementById("set-wave").value = currentHotel.wavepay_number || "";
+
+      const tbody = document.getElementById("admin-bookings-tbody");
+      if (hotelBookings.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400 text-xs">No reservations yet.</td></tr>`;
+      } else {
+        tbody.innerHTML = hotelBookings.map(b => `
+          <tr>
+            <td class="py-3 px-4">
+              <div class="font-mono font-bold text-xs text-slate-900">${b.reference_code}</div>
+              <div class="font-semibold text-slate-800">${b.guest_name}</div>
+              <div class="text-xs text-slate-500">${b.guest_phone}</div>
+            </td>
+            <td class="py-3 px-4 text-xs">
+              <div class="font-bold text-slate-800">Room ${b.rooms?.room_number || '-'} (${b.rooms?.room_type || ''})</div>
+              <div class="text-slate-500">${b.check_in} → ${b.check_out}</div>
+            </td>
+            <td class="py-3 px-4 text-xs">
+              <div class="font-bold text-slate-900">${Number(b.total_mmk).toLocaleString()} MMK</div>
+              <div class="text-slate-500">${b.payment_method}</div>
+              ${b.slip_url ? `<a href="${b.slip_url}" target="_blank" class="inline-block mt-1 text-indigo-600 underline font-semibold">View Slip</a>` : ''}
+            </td>
+            <td class="py-3 px-4">
+              <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                b.status === 'Pending Verification' ? 'bg-amber-100 text-amber-800' :
+                b.status === 'Confirmed' ? 'bg-emerald-100 text-emerald-800' :
+                b.status === 'Checked-In' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600'
+              }">${b.status}</span>
+            </td>
+            <td class="py-3 px-4 text-right space-x-1">
+              ${b.status === 'Pending Verification' ? `<button onclick="updateBookingStatus('${b.id}', 'Confirmed', '${b.room_id}', 'Available')" class="px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-xs font-bold">Verify</button>` : ''}
+              ${b.status === 'Confirmed' ? `<button onclick="updateBookingStatus('${b.id}', 'Checked-In', '${b.room_id}', 'Occupied')" class="px-2.5 py-1 bg-blue-600 text-white rounded-lg text-xs font-bold">Check-In</button>` : ''}
+              ${b.status === 'Checked-In' ? `<button onclick="updateBookingStatus('${b.id}', 'Checked-Out', '${b.room_id}', 'Cleaning')" class="px-2.5 py-1 bg-slate-800 text-white rounded-lg text-xs font-bold">Check-Out</button>` : ''}
+            </td>
+          </tr>
+        `).join("");
+      }
+
+      const rGrid = document.getElementById("admin-rooms-grid");
+      rGrid.innerHTML = hotelRooms.map(r => `
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+          <div class="relative h-32 bg-slate-100">
+            <img src="${r.image_url || FALLBACK_ROOM_IMG}" class="w-full h-full object-cover" onerror="this.src='${FALLBACK_ROOM_IMG}'" />
+            <label class="absolute bottom-2 right-2 px-2.5 py-1 bg-slate-900/80 hover:bg-slate-900 text-white text-[11px] font-semibold rounded-lg cursor-pointer">
+              Change Photo
+              <input type="file" accept="image/*" class="hidden" onchange="updateRoomPhoto('${r.id}', this.files[0])" />
+            </label>
+          </div>
+          <div class="p-3.5 space-y-2.5">
+            <div class="font-bold text-sm text-slate-900">Room ${r.room_number} – ${r.room_type}</div>
+            <div class="text-xs font-semibold text-emerald-700">${Number(r.price_mmk).toLocaleString()} MMK / night</div>
+            <div class="flex gap-2">
+              <select onchange="updateRoomStatus('${r.id}', this.value)" class="flex-1 px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold bg-white">
+                ${["Available", "Occupied", "Cleaning", "Blocked"].map(st => `<option value="${st}" ${r.status === st ? 'selected' : ''}>${st}</option>`).join("")}
+              </select>
+              <button onclick="promptUpdatePrice('${r.id}', ${r.price_mmk})" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold">Edit Rate</button>
+            </div>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    async function updateBookingStatus(bookingId, newStatus, roomId, roomStatus) {
+      await sbFetch(`bookings?id=eq.${bookingId}`, { method: "PATCH", body: JSON.stringify({ status: newStatus }) });
+      if (roomId && roomStatus) {
+        await sbFetch(`rooms?id=eq.${roomId}`, { method: "PATCH", body: JSON.stringify({ status: roomStatus }) });
+      }
+      await refreshHotelData();
+    }
+
+    async function updateRoomStatus(roomId, status) {
+      await sbFetch(`rooms?id=eq.${roomId}`, { method: "PATCH", body: JSON.stringify({ status }) });
+      await refreshHotelData();
+    }
+
+    async function promptUpdatePrice(roomId, oldPrice) {
+      const val = prompt("Enter new nightly rate (MMK):", oldPrice);
+      if (!val || isNaN(val)) return;
+      await sbFetch(`rooms?id=eq.${roomId}`, { method: "PATCH", body: JSON.stringify({ price_mmk: parseInt(val, 10) }) });
+      await refreshHotelData();
+    }
+
+    async function updateRoomPhoto(roomId, file) {
+      if (!file) return;
+      try {
+        const url = await uploadFileToBucket(file, "rooms");
+        await sbFetch(`rooms?id=eq.${roomId}`, { method: "PATCH", body: JSON.stringify({ image_url: url }) });
+        await refreshHotelData();
+      } catch (e) {
+        alert("Photo upload error: " + e.message);
+      }
+    }
+
+    async function adminAddRoom() {
+      const no = document.getElementById("new-room-no").value.trim();
+      const type = document.getElementById("new-room-type").value.trim();
+      const price = parseInt(document.getElementById("new-room-price").value, 10);
+      const file = document.getElementById("new-room-photo").files[0];
+      if (!no || !type || !price) return alert("Enter room number, type, and price.");
+
+      let imageUrl = null;
+      if (file) imageUrl = await uploadFileToBucket(file, "rooms");
+
+      await sbFetch("rooms", {
+        method: "POST",
+        body: JSON.stringify({
+          hotel_id: currentHotel.id,
+          room_number: no,
+          room_type: type,
+          price_mmk: price,
+          image_url: imageUrl,
+          status: "Available"
+        })
+      });
+      document.getElementById("new-room-no").value = "";
+      document.getElementById("new-room-type").value = "";
+      document.getElementById("new-room-price").value = "";
+      document.getElementById("new-room-photo").value = "";
+      await refreshHotelData();
+    }
+
+    async function saveHotelSettings() {
+      const updates = {
+        phone: document.getElementById("set-phone").value.trim(),
+        admin_pin: document.getElementById("set-pin").value.trim(),
+        kbzpay_number: document.getElementById("set-kbz").value.trim(),
+        wavepay_number: document.getElementById("set-wave").value.trim()
+      };
+      try {
+        await sbFetch(`hotels?id=eq.${currentHotel.id}`, { method: "PATCH", body: JSON.stringify(updates) });
+        currentHotel = { ...currentHotel, ...updates };
+        alert("Hotel settings saved!");
+      } catch (e) {
+        alert("Error saving: " + e.message);
+      }
+    }
+
+    function openWalkInModal() {
+      const sel = document.getElementById("wi-room");
+      sel.innerHTML = hotelRooms.map(r => `<option value="${r.id}">Room ${r.room_number} – ${r.room_type} (${Number(r.price_mmk).toLocaleString()} MMK)</option>`).join("");
+      document.getElementById("modal-walkin").classList.remove("hidden");
+    }
+
+    async function submitWalkIn() {
+      const roomId = document.getElementById("wi-room").value;
+      const name = document.getElementById("wi-name").value.trim() || "Walk-In Guest";
+      const phone = document.getElementById("wi-phone").value.trim() || "-";
+      const ci = document.getElementById("wi-checkin").value;
+      const co = document.getElementById("wi-checkout").value;
+      const room = hotelRooms.find(r => r.id === roomId);
+      const total = (room ? room.price_mmk : 0) * getNights(ci, co);
+
+      await sbFetch("bookings", {
+        method: "POST",
+        body: JSON.stringify({
+          hotel_id: currentHotel.id,
+          room_id: roomId,
+          reference_code: "WLK-" + Math.floor(1000 + Math.random() * 9000),
+          guest_name: name,
+          guest_phone: phone,
+          check_in: ci,
+          check_out: co,
+          total_mmk: total,
+          payment_method: "Walk-In / Viber",
+          status: "Confirmed"
+        })
+      });
+      closeModal("modal-walkin");
+      await refreshHotelData();
+    }
+
+    // SUPER-ADMIN PORTAL FUNCTIONS
+    async function unlockSuperAdmin() {
+      const pass = document.getElementById("super-pass-input").value.trim();
+      if (pass !== MASTER_SUPER_ADMIN_PASS) return alert("Invalid Master Password.");
+      document.getElementById("super-login-box").classList.add("hidden");
+      document.getElementById("super-workspace").classList.remove("hidden");
+      await loadSuperAdminHotels();
+    }
+
+    async function loadSuperAdminHotels() {
+      try {
+        const list = await sbFetch("hotels?select=*&order=created_at.desc") || [];
+        document.getElementById("super-hotel-count").textContent = `${list.length} Hotels`;
+
+        const sel = document.getElementById("sa-hotel-select");
+        sel.innerHTML = list.map(h => `<option value="${h.id}">${h.name} (${h.slug})</option>`).join("");
+
+        const baseUrl = window.location.origin + window.location.pathname;
+        document.getElementById("sa-hotels-list").innerHTML = list.map(h => `
+          <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="font-bold text-sm text-slate-900">${h.name}</div>
+                <div class="text-xs text-slate-500">${h.location || ''} • PIN: <b>${h.admin_pin}</b></div>
+              </div>
+              <button onclick="superToggleHotel('${h.id}', ${!h.is_active})" class="px-2.5 py-1 rounded-full text-[11px] font-bold ${h.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+                ${h.is_active ? 'Active' : 'Paused'}
+              </button>
+            </div>
+            <div class="flex gap-2 pt-1 text-[11px] font-semibold">
+              <a href="${baseUrl}?hotel=${h.slug}" target="_blank" class="px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100">Guest Link</a>
+              <a href="${baseUrl}?hotel=${h.slug}&view=admin" target="_blank" class="px-2.5 py-1 bg-slate-900 text-white rounded-lg hover:bg-slate-800">Front-Desk</a>
+            </div>
+          </div>
+        `).join("");
+      } catch (e) {
+        alert("Failed to load hotels: " + e.message);
+      }
+    }
+
+    async function superCreateHotel() {
+      const name = document.getElementById("sa-name").value.trim();
+      const slug = document.getElementById("sa-slug").value.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
+      const loc = document.getElementById("sa-loc").value.trim();
+      const kbz = document.getElementById("sa-kbz").value.trim();
+      const pin = document.getElementById("sa-pin").value.trim() || "1234";
+
+      if (!name || !slug) return alert("Hotel Name and URL Slug are required.");
+
+      try {
+        await sbFetch("hotels", {
+          method: "POST",
+          body: JSON.stringify({
+            name, slug, location: loc, phone: kbz, kbzpay_number: kbz, wavepay_number: kbz, admin_pin: pin, is_active: true
+          })
+        });
+        document.getElementById("sa-name").value = "";
+        document.getElementById("sa-slug").value = "";
+        document.getElementById("sa-loc").value = "";
+        document.getElementById("sa-kbz").value = "";
+        await loadSuperAdminHotels();
+        alert(`Created live workspace for ${name}!`);
+      } catch (e) {
+        alert("Error creating hotel: " + e.message);
+      }
+    }
+
+    async function superAddRoom() {
+      const hotelId = document.getElementById("sa-hotel-select").value;
+      const no = document.getElementById("sa-room-no").value.trim();
+      const type = document.getElementById("sa-room-type").value.trim();
+      const price = parseInt(document.getElementById("sa-room-price").value, 10);
+      const file = document.getElementById("sa-room-photo").files[0];
+
+      if (!hotelId || !no || !type || !price) return alert("Fill in hotel, room number, type, and rate.");
+
+      const btn = document.getElementById("sa-add-room-btn");
+      btn.disabled = true;
+      btn.textContent = "Uploading...";
+
+      try {
+        let imageUrl = null;
+        if (file) imageUrl = await uploadFileToBucket(file, "rooms");
+
+        await sbFetch("rooms", {
+          method: "POST",
+          body: JSON.stringify({
+            hotel_id: hotelId,
+            room_number: no,
+            room_type: type,
+            price_mmk: price,
+            image_url: imageUrl,
+            status: "Available"
+          })
+        });
+
+        document.getElementById("sa-room-no").value = "";
+        document.getElementById("sa-room-type").value = "";
+        document.getElementById("sa-room-price").value = "";
+        document.getElementById("sa-room-photo").value = "";
+        alert("Room and photo saved!");
+      } catch (e) {
+        alert("Error: " + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Save Room & Photo";
+      }
+    }
+
+    async function superToggleHotel(hotelId, newState) {
+      await sbFetch(`hotels?id=eq.${hotelId}`, { method: "PATCH", body: JSON.stringify({ is_active: newState }) });
+      await loadSuperAdminHotels();
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add("hidden");
+    }
+  </script>
+</body>
+</html>
