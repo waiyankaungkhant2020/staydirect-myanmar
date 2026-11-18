@@ -13,7 +13,7 @@
 </head>
 <body class="text-slate-800 antialiased min-h-screen flex flex-col">
 
-  <!-- TOP NAVIGATION BAR (CLEAN GUEST HEADER - NO FRONT-DESK SWITCH) -->
+  <!-- TOP NAVIGATION BAR (CLEAN GUEST HEADER) -->
   <header class="bg-slate-900 text-white sticky top-0 z-40 shadow-md">
     <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2.5">
@@ -41,7 +41,7 @@
     <!-- LOADING STATE -->
     <div id="view-loading" class="text-center py-20">
       <div class="inline-block w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-3"></div>
-      <p class="text-sm text-slate-500 font-medium" id="loading-status-text">Connecting to StayDirect Cloud...</p>
+      <p class="text-sm text-slate-500 font-medium">Connecting to StayDirect Cloud...</p>
     </div>
 
     <!-- PAUSED / ERROR STATE -->
@@ -87,8 +87,8 @@
 
       <div>
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-bold text-slate-900">Select Your Room</h2>
-          <span class="text-xs text-slate-500" id="guest-room-count">Loading rooms...</span>
+          <h2 class="text-lg font-bold text-slate-900">Select Room Category</h2>
+          <span class="text-xs text-slate-500" id="guest-room-count">Checking availability...</span>
         </div>
         <div id="guest-rooms-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
       </div>
@@ -101,7 +101,7 @@
       <div id="admin-pin-gate" class="max-w-sm mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-center my-8">
         <div class="w-11 h-11 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center mx-auto mb-3 font-bold">PIN</div>
         <h2 class="text-lg font-bold text-slate-900">Front-Desk Staff Access</h2>
-        <p class="text-xs text-slate-500 mt-1 mb-4">Enter your hotel's Staff PIN to manage bookings & rooms</p>
+        <p class="text-xs text-slate-500 mt-1 mb-4">Enter your hotel's Staff PIN to manage bookings & inventory</p>
         <input type="password" id="admin-pin-input" placeholder="Enter PIN" maxlength="8" class="w-full text-center tracking-widest text-lg font-bold px-4 py-2.5 border border-slate-300 rounded-xl mb-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none" onkeydown="if(event.key==='Enter') verifyAdminPin()" />
         <button onclick="verifyAdminPin()" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-sm transition">
           Unlock Dashboard
@@ -123,7 +123,7 @@
             <div class="text-xl font-extrabold text-amber-600 mt-1" id="kpi-pending">0</div>
           </div>
           <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-            <div class="text-xs font-medium text-slate-500">Available Rooms</div>
+            <div class="text-xs font-medium text-slate-500">Today's Inventory (Avail / Total)</div>
             <div class="text-xl font-extrabold text-slate-900 mt-1" id="kpi-available">0 / 0</div>
           </div>
         </div>
@@ -131,7 +131,7 @@
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
           <div class="flex gap-2">
             <button onclick="switchAdminTab('bookings')" id="tab-admin-bookings" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-slate-900 text-white">Bookings & Slips</button>
-            <button onclick="switchAdminTab('rooms')" id="tab-admin-rooms" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-white text-slate-600 border border-slate-200">Rooms, Rates & Photos (Max 4)</button>
+            <button onclick="switchAdminTab('rooms')" id="tab-admin-rooms" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-white text-slate-600 border border-slate-200">Room Types & Inventory</button>
             <button onclick="switchAdminTab('settings')" id="tab-admin-settings" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-white text-slate-600 border border-slate-200">Payment & Link Settings</button>
           </div>
           <button onclick="openWalkInModal()" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm">
@@ -145,7 +145,7 @@
               <thead>
                 <tr class="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-500">
                   <th class="py-3 px-4">Ref / Guest</th>
-                  <th class="py-3 px-4">Room & Dates</th>
+                  <th class="py-3 px-4">Room Category & Dates</th>
                   <th class="py-3 px-4">Amount & Payment</th>
                   <th class="py-3 px-4">Status</th>
                   <th class="py-3 px-4 text-right">Actions</th>
@@ -159,23 +159,27 @@
         <div id="admin-panel-rooms" class="hidden space-y-4">
           <div class="bg-white p-4 rounded-xl border border-slate-200 flex flex-wrap items-end gap-3">
             <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Room No.</label>
-              <input type="text" id="new-room-no" placeholder="e.g. 302" class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-28" />
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Room Type / Category *</label>
+              <input type="text" id="new-room-type" placeholder="e.g. Deluxe Garden View" class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-52" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Room Category</label>
-              <input type="text" id="new-room-type" placeholder="e.g. Deluxe Double" class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-48" />
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Total Rooms *</label>
+              <input type="number" id="new-room-total" value="5" min="1" class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-28" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Nightly Rate (MMK)</label>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Nightly Rate (MMK) *</label>
               <input type="number" id="new-room-price" placeholder="95000" class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-36" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Max Guests</label>
+              <input type="number" id="new-room-guests" value="2" min="1" class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-24" />
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">Photos (Up to 4)</label>
               <input type="file" id="new-room-photo" accept="image/*" multiple class="text-xs text-slate-500" />
             </div>
             <button onclick="adminAddRoom()" id="btn-admin-add-room" class="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-slate-800">
-              + Add Room
+              + Add Room Type
             </button>
           </div>
           <div id="admin-rooms-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
@@ -225,7 +229,7 @@
       <div id="super-login-box" class="max-w-sm mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-center my-8">
         <span class="px-2.5 py-1 bg-indigo-100 text-indigo-700 text-[11px] font-bold rounded-full">PLATFORM OWNER</span>
         <h2 class="text-lg font-bold text-slate-900 mt-2">Master Super-Admin</h2>
-        <p class="text-xs text-slate-500 mt-1 mb-4">Onboard new hotels, upload room photos & manage licenses</p>
+        <p class="text-xs text-slate-500 mt-1 mb-4">Onboard new hotels, configure room types & manage licenses</p>
         <input type="password" id="super-pass-input" placeholder="Master Password" class="w-full text-center px-4 py-2.5 border border-slate-300 rounded-xl mb-3 text-sm" onkeydown="if(event.key==='Enter') unlockSuperAdmin()" />
         <button onclick="unlockSuperAdmin()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm">
           Access Super-Admin
@@ -236,7 +240,7 @@
         <div class="flex items-center justify-between">
           <div>
             <h1 class="text-xl font-extrabold text-slate-900">StayDirect Myanmar – Master Control</h1>
-            <p class="text-xs text-slate-500">Create client workspaces, upload up to 4 room photos, and toggle license status.</p>
+            <p class="text-xs text-slate-500">Create client workspaces, add room categories with inventory counts, and toggle license status.</p>
           </div>
           <span class="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full" id="super-hotel-count">0 Hotels</span>
         </div>
@@ -272,31 +276,31 @@
           </div>
 
           <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-            <h3 class="font-bold text-sm text-slate-900 border-b pb-2">2. Add Room & Photos (Max 4)</h3>
+            <h3 class="font-bold text-sm text-slate-900 border-b pb-2">2. Add Room Category & Photos</h3>
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">Select Client Hotel</label>
               <select id="sa-hotel-select" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"></select>
             </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Room Type Name *</label>
+              <input type="text" id="sa-room-type" placeholder="e.g. Deluxe Garden View" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+            </div>
             <div class="grid grid-cols-2 gap-2">
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">Room Number</label>
-                <input type="text" id="sa-room-no" placeholder="101" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Total Rooms *</label>
+                <input type="number" id="sa-room-total" value="5" min="1" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">Rate (MMK)</label>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Rate (MMK) *</label>
                 <input type="number" id="sa-room-price" placeholder="85000" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
               </div>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Room Type Name</label>
-              <input type="text" id="sa-room-type" placeholder="Deluxe Garden View" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Upload Room Photos (Select 1 to 4 images)</label>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Upload Room Photos (1 to 4 images)</label>
               <input type="file" id="sa-room-photo" accept="image/*" multiple class="w-full text-xs text-slate-500" />
             </div>
             <button onclick="superAddRoom()" id="sa-add-room-btn" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl">
-              Save Room & Photos
+              Save Room Category
             </button>
           </div>
 
@@ -310,9 +314,7 @@
 
   </main>
 
-  <!-- ========================================================= -->
-  <!-- GUEST PHOTO GALLERY LIGHTBOX MODAL                        -->
-  <!-- ========================================================= -->
+  <!-- GUEST PHOTO GALLERY LIGHTBOX MODAL -->
   <div id="modal-gallery" class="hidden fixed inset-0 bg-slate-950/85 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeModal('modal-gallery')">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-3xl w-full overflow-hidden shadow-2xl">
       <div class="px-4 py-3 flex items-center justify-between border-b border-slate-800 text-white">
@@ -407,7 +409,7 @@
       </div>
       <div class="space-y-3">
         <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">Select Room</label>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Select Room Category</label>
           <select id="wi-room" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"></select>
         </div>
         <div>
@@ -436,7 +438,7 @@
   </div>
 
   <!-- ========================================================= -->
-  <!-- ZERO-CDN DIRECT SUPABASE REST CLIENT + MULTI-PHOTO LOGIC  -->
+  <!-- ZERO-CDN DIRECT SUPABASE REST + INVENTORY CALCULATION     -->
   <!-- ========================================================= -->
   <script>
     const SUPABASE_URL = "https://xrwqbdjvuztjgkknsank.supabase.co";
@@ -485,7 +487,6 @@
     let hotelBookings = [];
     let selectedRoomForBooking = null;
 
-    // Gallery Lightbox State
     let activeGalleryPhotos = [];
     let activeGalleryIndex = 0;
 
@@ -499,6 +500,24 @@
         arr = [room.image_url];
       }
       return arr.slice(0, MAX_ROOM_PHOTOS);
+    }
+
+    // INVENTORY CALCULATION BY ROOM TYPE & DATE RANGE
+    function getCategoryInventoryForDates(room, checkInStr, checkOutStr) {
+      const total = Number(room.total_rooms) || 1;
+      if (room.status === "Blocked") {
+        return { total, occupied: total, available: 0, blocked: true };
+      }
+      const activeStatuses = ["Pending Verification", "Confirmed", "Checked-In"];
+      const overlapping = hotelBookings.filter(b => {
+        if (b.room_id !== room.id) return false;
+        if (!activeStatuses.includes(b.status)) return false;
+        // Date overlap check: booking starts before guest checkout AND ends after guest checkin
+        return b.check_in < checkOutStr && b.check_out > checkInStr;
+      }).length;
+
+      const available = Math.max(0, total - overlapping);
+      return { total, occupied: overlapping, available, blocked: false };
     }
 
     window.addEventListener("DOMContentLoaded", async () => {
@@ -580,8 +599,8 @@
     async function refreshHotelData() {
       if (!currentHotel) return;
       const [roomsData, bookingsData] = await Promise.all([
-        sbFetch(`rooms?hotel_id=eq.${currentHotel.id}&select=*&order=room_number.asc`),
-        sbFetch(`bookings?hotel_id=eq.${currentHotel.id}&select=*,rooms(room_number,room_type)&order=created_at.desc`)
+        sbFetch(`rooms?hotel_id=eq.${currentHotel.id}&select=*&order=price_mmk.asc`),
+        sbFetch(`bookings?hotel_id=eq.${currentHotel.id}&select=*,rooms(room_type)&order=created_at.desc`)
       ]);
       hotelRooms = roomsData || [];
       hotelBookings = bookingsData || [];
@@ -589,41 +608,42 @@
       renderAdminDashboard();
     }
 
-    // RENDER GUEST ROOMS (CLICKABLE PHOTO GALLERY)
+    // RENDER GUEST ROOM CATEGORIES WITH LIVE INVENTORY COUNT
     function renderGuestRooms() {
       const grid = document.getElementById("guest-rooms-grid");
-      const availableRooms = hotelRooms.filter(r => r.status === "Available");
-      document.getElementById("guest-room-count").textContent = `${availableRooms.length} rooms available`;
-
-      const nights = getNights(
-        document.getElementById("guest-checkin").value,
-        document.getElementById("guest-checkout").value
-      );
+      const ci = document.getElementById("guest-checkin").value;
+      const co = document.getElementById("guest-checkout").value;
+      const nights = getNights(ci, co);
 
       if (hotelRooms.length === 0) {
-        grid.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400 text-sm">No rooms configured yet for this property.</div>`;
+        document.getElementById("guest-room-count").textContent = "0 categories";
+        grid.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400 text-sm">No room categories configured yet for this property.</div>`;
         return;
       }
 
+      let totalAvailableAcrossHotel = 0;
+
       grid.innerHTML = hotelRooms.map(room => {
-        const isAvail = room.status === "Available";
+        const inv = getCategoryInventoryForDates(room, ci, co);
+        totalAvailableAcrossHotel += inv.available;
+        const isAvail = inv.available > 0;
         const total = room.price_mmk * nights;
         const photos = getRoomPhotos(room);
         const coverImg = photos[0] || FALLBACK_ROOM_IMG;
         const photoCount = photos.length > 0 ? photos.length : 1;
 
         return `
-          <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col justify-between ${!isAvail ? 'opacity-65' : ''}">
+          <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col justify-between ${!isAvail ? 'opacity-70' : ''}">
             <div>
               <div onclick="openRoomGallery('${room.id}')" class="relative h-48 bg-slate-100 cursor-pointer group overflow-hidden">
                 <img src="${coverImg}" alt="${room.room_type}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" onerror="this.src='${FALLBACK_ROOM_IMG}'" />
-                <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[11px] font-bold ${isAvail ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-white'}">
-                  ${isAvail ? 'Available' : room.status}
+                <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                  !isAvail ? 'bg-rose-600 text-white' :
+                  inv.available <= 2 ? 'bg-amber-400 text-slate-950' : 'bg-emerald-500 text-slate-950'
+                }">
+                  ${!isAvail ? 'Sold Out' : `${inv.available} Room${inv.available > 1 ? 's' : ''} Available`}
                 </span>
-                <span class="absolute top-3 right-3 px-2 py-0.5 rounded-md bg-slate-900/75 text-white text-[11px] font-mono">
-                  Room ${room.room_number}
-                </span>
-                <span class="absolute bottom-2.5 right-2.5 px-2.5 py-1 rounded-lg bg-slate-900/80 text-white text-[11px] font-semibold backdrop-blur-xs">
+                <span class="absolute bottom-2.5 right-2.5 px-2.5 py-1 rounded-lg bg-slate-900/80 text-white text-[11px] font-semibold">
                   View Photos (${photoCount})
                 </span>
               </div>
@@ -638,15 +658,17 @@
                 <div class="text-base font-extrabold text-slate-900">${total.toLocaleString()} MMK</div>
               </div>
               <button ${!isAvail ? 'disabled' : ''} onclick="openBookingModal('${room.id}')" class="px-4 py-2 rounded-xl text-xs font-bold transition ${isAvail ? 'bg-slate-900 hover:bg-emerald-600 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}">
-                ${isAvail ? 'Book Now' : 'Unavailable'}
+                ${isAvail ? 'Book Now' : 'Sold Out'}
               </button>
             </div>
           </div>
         `;
       }).join("");
+
+      document.getElementById("guest-room-count").textContent = `${totalAvailableAcrossHotel} rooms available across ${hotelRooms.length} categories`;
     }
 
-    // GALLERY LIGHTBOX FUNCTIONS
+    // GALLERY LIGHTBOX
     function openRoomGallery(roomId) {
       const room = hotelRooms.find(r => r.id === roomId);
       if (!room) return;
@@ -654,7 +676,7 @@
       activeGalleryPhotos = photos.length > 0 ? photos : [FALLBACK_ROOM_IMG];
       activeGalleryIndex = 0;
 
-      document.getElementById("gal-title").textContent = `${room.room_type} (Room ${room.room_number})`;
+      document.getElementById("gal-title").textContent = room.room_type;
       renderGallerySlide();
       document.getElementById("modal-gallery").classList.remove("hidden");
     }
@@ -663,7 +685,6 @@
       const total = activeGalleryPhotos.length;
       document.getElementById("gal-main-img").src = activeGalleryPhotos[activeGalleryIndex];
       document.getElementById("gal-counter").textContent = `Photo ${activeGalleryIndex + 1} of ${total}`;
-
       document.getElementById("gal-prev-btn").classList.toggle("hidden", total <= 1);
       document.getElementById("gal-next-btn").classList.toggle("hidden", total <= 1);
 
@@ -694,7 +715,7 @@
       const nights = getNights(ci, co);
       const total = selectedRoomForBooking.price_mmk * nights;
 
-      document.getElementById("mb-room-title").textContent = `${selectedRoomForBooking.room_type} (Room ${selectedRoomForBooking.room_number})`;
+      document.getElementById("mb-room-title").textContent = selectedRoomForBooking.room_type;
       document.getElementById("mb-dates-summary").textContent = `${ci} to ${co} (${nights} night${nights > 1 ? 's' : ''})`;
       document.getElementById("mb-total-price").textContent = `${total.toLocaleString()} MMK`;
       toggleSlipBox();
@@ -725,6 +746,11 @@
         return alert("Please upload your KBZPay/WavePay transfer screenshot.");
       }
 
+      const ci = document.getElementById("guest-checkin").value;
+      const co = document.getElementById("guest-checkout").value;
+      const inv = getCategoryInventoryForDates(selectedRoomForBooking, ci, co);
+      if (inv.available <= 0) return alert("Sorry, this room type just sold out for your selected dates.");
+
       const btn = document.getElementById("mb-submit-btn");
       btn.disabled = true;
       btn.textContent = "Submitting Reservation...";
@@ -735,8 +761,6 @@
           slipUrl = await uploadFileToBucket(slipInput.files[0], "slips");
         }
 
-        const ci = document.getElementById("guest-checkin").value;
-        const co = document.getElementById("guest-checkout").value;
         const nights = getNights(ci, co);
         const total = selectedRoomForBooking.price_mmk * nights;
         const refCode = "DIR-" + Math.floor(1000 + Math.random() * 9000);
@@ -782,7 +806,7 @@
     async function lookupBooking() {
       const code = document.getElementById("lookup-code-input").value.trim().toUpperCase();
       if (!code) return;
-      const rows = await sbFetch(`bookings?reference_code=eq.${encodeURIComponent(code)}&select=*,rooms(room_number,room_type)`);
+      const rows = await sbFetch(`bookings?reference_code=eq.${encodeURIComponent(code)}&select=*,rooms(room_type)`);
       const data = rows && rows[0];
 
       const resEl = document.getElementById("lookup-result");
@@ -797,7 +821,7 @@
             <span>${data.status}</span>
           </div>
           <div><b>Guest:</b> ${data.guest_name} (${data.guest_phone})</div>
-          <div><b>Room:</b> ${data.rooms?.room_type || ''} (${data.rooms?.room_number || ''})</div>
+          <div><b>Room Type:</b> ${data.rooms?.room_type || ''}</div>
           <div><b>Dates:</b> ${data.check_in} → ${data.check_out}</div>
           <div><b>Total:</b> ${Number(data.total_mmk).toLocaleString()} MMK (${data.payment_method})</div>
           <div class="text-[11px] text-emerald-800 pt-1">Save this reference code for fast check-in!</div>
@@ -830,16 +854,29 @@
 
     function renderAdminDashboard() {
       if (!currentHotel) return;
+
+      const todayStr = new Date().toISOString().split("T")[0];
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = tomorrow.toISOString().split("T")[0];
+
       const confirmedRev = hotelBookings
         .filter(b => ["Confirmed", "Checked-In", "Checked-Out"].includes(b.status))
         .reduce((sum, b) => sum + Number(b.total_mmk || 0), 0);
       const pendingCount = hotelBookings.filter(b => b.status === "Pending Verification").length;
-      const availCount = hotelRooms.filter(r => r.status === "Available").length;
+
+      let totalAllRooms = 0;
+      let availTodayRooms = 0;
+      hotelRooms.forEach(r => {
+        const inv = getCategoryInventoryForDates(r, todayStr, tomorrowStr);
+        totalAllRooms += inv.total;
+        availTodayRooms += inv.available;
+      });
 
       document.getElementById("kpi-revenue").textContent = `${confirmedRev.toLocaleString()} MMK`;
       document.getElementById("kpi-saved").textContent = `${Math.round(confirmedRev * 0.18).toLocaleString()} MMK`;
       document.getElementById("kpi-pending").textContent = pendingCount;
-      document.getElementById("kpi-available").textContent = `${availCount} / ${hotelRooms.length}`;
+      document.getElementById("kpi-available").textContent = `${availTodayRooms} / ${totalAllRooms}`;
 
       const baseUrl = window.location.origin + window.location.pathname;
       document.getElementById("share-guest-url").textContent = `${baseUrl}?hotel=${currentHotel.slug}`;
@@ -849,6 +886,7 @@
       document.getElementById("set-kbz").value = currentHotel.kbzpay_number || "";
       document.getElementById("set-wave").value = currentHotel.wavepay_number || "";
 
+      // Bookings Table (With Reject / Cancel button)
       const tbody = document.getElementById("admin-bookings-tbody");
       if (hotelBookings.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400 text-xs">No reservations yet.</td></tr>`;
@@ -861,7 +899,7 @@
               <div class="text-xs text-slate-500">${b.guest_phone}</div>
             </td>
             <td class="py-3 px-4 text-xs">
-              <div class="font-bold text-slate-800">Room ${b.rooms?.room_number || '-'} (${b.rooms?.room_type || ''})</div>
+              <div class="font-bold text-slate-800">${b.rooms?.room_type || 'Room Category'}</div>
               <div class="text-slate-500">${b.check_in} → ${b.check_out}</div>
             </td>
             <td class="py-3 px-4 text-xs">
@@ -873,27 +911,37 @@
               <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${
                 b.status === 'Pending Verification' ? 'bg-amber-100 text-amber-800' :
                 b.status === 'Confirmed' ? 'bg-emerald-100 text-emerald-800' :
-                b.status === 'Checked-In' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600'
+                b.status === 'Checked-In' ? 'bg-blue-100 text-blue-800' :
+                b.status === 'Cancelled' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600'
               }">${b.status}</span>
             </td>
-            <td class="py-3 px-4 text-right space-x-1">
-              ${b.status === 'Pending Verification' ? `<button onclick="updateBookingStatus('${b.id}', 'Confirmed', '${b.room_id}', 'Available')" class="px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-xs font-bold">Verify</button>` : ''}
-              ${b.status === 'Confirmed' ? `<button onclick="updateBookingStatus('${b.id}', 'Checked-In', '${b.room_id}', 'Occupied')" class="px-2.5 py-1 bg-blue-600 text-white rounded-lg text-xs font-bold">Check-In</button>` : ''}
-              ${b.status === 'Checked-In' ? `<button onclick="updateBookingStatus('${b.id}', 'Checked-Out', '${b.room_id}', 'Cleaning')" class="px-2.5 py-1 bg-slate-800 text-white rounded-lg text-xs font-bold">Check-Out</button>` : ''}
+            <td class="py-3 px-4 text-right space-x-1 whitespace-nowrap">
+              ${b.status === 'Pending Verification' ? `
+                <button onclick="updateBookingStatus('${b.id}', 'Confirmed')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold">Verify</button>
+                <button onclick="rejectBooking('${b.id}')" class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold">Reject</button>
+              ` : ''}
+              ${b.status === 'Confirmed' ? `
+                <button onclick="updateBookingStatus('${b.id}', 'Checked-In')" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold">Check-In</button>
+                <button onclick="rejectBooking('${b.id}')" class="px-2 py-1 bg-slate-200 hover:bg-rose-100 text-slate-700 hover:text-rose-700 rounded-lg text-xs font-semibold">Cancel</button>
+              ` : ''}
+              ${b.status === 'Checked-In' ? `
+                <button onclick="updateBookingStatus('${b.id}', 'Checked-Out')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold">Check-Out</button>
+              ` : ''}
             </td>
           </tr>
         `).join("");
       }
 
-      // Admin Rooms Grid with up to 4 Photo Slots
+      // Admin Room Types & Inventory Breakdown
       const rGrid = document.getElementById("admin-rooms-grid");
       rGrid.innerHTML = hotelRooms.map(r => {
         const photos = getRoomPhotos(r);
         const canAddMore = photos.length < MAX_ROOM_PHOTOS;
+        const inv = getCategoryInventoryForDates(r, todayStr, tomorrowStr);
+
         return `
           <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs flex flex-col justify-between">
             <div>
-              <!-- 4-Photo Thumbnail Strip -->
               <div class="p-2.5 bg-slate-50 border-b border-slate-200">
                 <div class="flex items-center justify-between mb-1.5">
                   <span class="text-[11px] font-bold text-slate-600">Photos (${photos.length} / ${MAX_ROOM_PHOTOS})</span>
@@ -909,9 +957,9 @@
                     const url = photos[idx];
                     if (url) {
                       return `
-                        <div class="relative h-14 rounded-lg overflow-hidden border border-slate-300 group">
+                        <div class="relative h-14 rounded-lg overflow-hidden border border-slate-300">
                           <img src="${url}" class="w-full h-full object-cover" />
-                          <button onclick="removeRoomPhoto('${r.id}', ${idx})" title="Remove photo" class="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center opacity-90 hover:opacity-100">&times;</button>
+                          <button onclick="removeRoomPhoto('${r.id}', ${idx})" title="Remove photo" class="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center">&times;</button>
                         </div>
                       `;
                     }
@@ -925,17 +973,36 @@
                 </div>
               </div>
 
-              <div class="p-3.5 space-y-1">
-                <div class="font-bold text-sm text-slate-900">Room ${r.room_number} – ${r.room_type}</div>
-                <div class="text-xs font-semibold text-emerald-700">${Number(r.price_mmk).toLocaleString()} MMK / night</div>
+              <div class="p-3.5 space-y-2.5">
+                <div>
+                  <div class="font-bold text-sm text-slate-900">${r.room_type}</div>
+                  <div class="text-xs font-semibold text-emerald-700">${Number(r.price_mmk).toLocaleString()} MMK / night</div>
+                </div>
+
+                <!-- Inventory Breakdown Box -->
+                <div class="grid grid-cols-3 gap-1.5 bg-slate-50 border border-slate-200 rounded-lg p-2 text-center">
+                  <div>
+                    <div class="text-[10px] text-slate-500 font-semibold uppercase">Total</div>
+                    <div class="text-sm font-extrabold text-slate-900">${inv.total}</div>
+                  </div>
+                  <div class="border-x border-slate-200">
+                    <div class="text-[10px] text-amber-600 font-semibold uppercase">Occupied</div>
+                    <div class="text-sm font-extrabold text-amber-700">${inv.occupied}</div>
+                  </div>
+                  <div>
+                    <div class="text-[10px] text-emerald-600 font-semibold uppercase">Available</div>
+                    <div class="text-sm font-extrabold text-emerald-700">${inv.available}</div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div class="px-3.5 pb-3.5 flex gap-2">
-              <select onchange="updateRoomStatus('${r.id}', this.value)" class="flex-1 px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold bg-white">
-                ${["Available", "Occupied", "Cleaning", "Blocked"].map(st => `<option value="${st}" ${r.status === st ? 'selected' : ''}>${st}</option>`).join("")}
-              </select>
-              <button onclick="promptUpdatePrice('${r.id}', ${r.price_mmk})" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold">Edit Rate</button>
+            <div class="px-3.5 pb-3.5 flex flex-wrap gap-1.5">
+              <button onclick="promptUpdateTotalRooms('${r.id}', ${inv.total})" class="flex-1 px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold">Edit Count (${inv.total})</button>
+              <button onclick="promptUpdatePrice('${r.id}', ${r.price_mmk})" class="flex-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold">Edit Rate</button>
+              <button onclick="toggleBlockCategory('${r.id}', '${r.status}')" class="w-full px-2.5 py-1 rounded-lg text-[11px] font-semibold border ${r.status === 'Blocked' ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}">
+                ${r.status === 'Blocked' ? 'Category Closed (Click to Reopen)' : 'Open for Online Booking'}
+              </button>
             </div>
           </div>
         `;
@@ -949,14 +1016,13 @@
 
       const currentPhotos = getRoomPhotos(room);
       const remainingSlots = MAX_ROOM_PHOTOS - currentPhotos.length;
-      if (remainingSlots <= 0) return alert("Maximum 4 photos per room allowed.");
+      if (remainingSlots <= 0) return alert("Maximum 4 photos per room type allowed.");
 
       const filesToUpload = Array.from(fileList).slice(0, remainingSlots);
       try {
         const uploadedUrls = [];
         for (const f of filesToUpload) {
-          const url = await uploadFileToBucket(f, "rooms");
-          uploadedUrls.push(url);
+          uploadedUrls.push(await uploadFileToBucket(f, "rooms"));
         }
         const updatedGallery = [...currentPhotos, ...uploadedUrls];
         await sbFetch(`rooms?id=eq.${roomId}`, {
@@ -986,16 +1052,21 @@
       await refreshHotelData();
     }
 
-    async function updateBookingStatus(bookingId, newStatus, roomId, roomStatus) {
+    async function updateBookingStatus(bookingId, newStatus) {
       await sbFetch(`bookings?id=eq.${bookingId}`, { method: "PATCH", body: JSON.stringify({ status: newStatus }) });
-      if (roomId && roomStatus) {
-        await sbFetch(`rooms?id=eq.${roomId}`, { method: "PATCH", body: JSON.stringify({ status: roomStatus }) });
-      }
       await refreshHotelData();
     }
 
-    async function updateRoomStatus(roomId, status) {
-      await sbFetch(`rooms?id=eq.${roomId}`, { method: "PATCH", body: JSON.stringify({ status }) });
+    async function rejectBooking(bookingId) {
+      if (!confirm("Reject / Cancel this reservation? This will release the room back into available inventory.")) return;
+      await sbFetch(`bookings?id=eq.${bookingId}`, { method: "PATCH", body: JSON.stringify({ status: "Cancelled" }) });
+      await refreshHotelData();
+    }
+
+    async function promptUpdateTotalRooms(roomId, oldTotal) {
+      const val = prompt("Total number of rooms in this category:", oldTotal);
+      if (!val || isNaN(val) || parseInt(val, 10) < 1) return;
+      await sbFetch(`rooms?id=eq.${roomId}`, { method: "PATCH", body: JSON.stringify({ total_rooms: parseInt(val, 10) }) });
       await refreshHotelData();
     }
 
@@ -1006,12 +1077,19 @@
       await refreshHotelData();
     }
 
+    async function toggleBlockCategory(roomId, currentStatus) {
+      const nextStatus = currentStatus === "Blocked" ? "Available" : "Blocked";
+      await sbFetch(`rooms?id=eq.${roomId}`, { method: "PATCH", body: JSON.stringify({ status: nextStatus }) });
+      await refreshHotelData();
+    }
+
     async function adminAddRoom() {
-      const no = document.getElementById("new-room-no").value.trim();
       const type = document.getElementById("new-room-type").value.trim();
+      const totalRooms = parseInt(document.getElementById("new-room-total").value, 10) || 1;
       const price = parseInt(document.getElementById("new-room-price").value, 10);
+      const maxGuests = parseInt(document.getElementById("new-room-guests").value, 10) || 2;
       const files = Array.from(document.getElementById("new-room-photo").files || []).slice(0, MAX_ROOM_PHOTOS);
-      if (!no || !type || !price) return alert("Enter room number, type, and price.");
+      if (!type || !price) return alert("Enter room category name and nightly rate.");
 
       const btn = document.getElementById("btn-admin-add-room");
       btn.disabled = true;
@@ -1027,24 +1105,26 @@
           method: "POST",
           body: JSON.stringify({
             hotel_id: currentHotel.id,
-            room_number: no,
+            room_number: "CAT",
             room_type: type,
+            total_rooms: totalRooms,
+            max_guests: maxGuests,
             price_mmk: price,
             image_url: uploadedUrls[0] || null,
             gallery_urls: uploadedUrls,
             status: "Available"
           })
         });
-        document.getElementById("new-room-no").value = "";
         document.getElementById("new-room-type").value = "";
+        document.getElementById("new-room-total").value = "5";
         document.getElementById("new-room-price").value = "";
         document.getElementById("new-room-photo").value = "";
         await refreshHotelData();
       } catch (e) {
-        alert("Error adding room: " + e.message);
+        alert("Error adding room category: " + e.message);
       } finally {
         btn.disabled = false;
-        btn.textContent = "+ Add Room";
+        btn.textContent = "+ Add Room Type";
       }
     }
 
@@ -1066,7 +1146,7 @@
 
     function openWalkInModal() {
       const sel = document.getElementById("wi-room");
-      sel.innerHTML = hotelRooms.map(r => `<option value="${r.id}">Room ${r.room_number} – ${r.room_type} (${Number(r.price_mmk).toLocaleString()} MMK)</option>`).join("");
+      sel.innerHTML = hotelRooms.map(r => `<option value="${r.id}">${r.room_type} (${Number(r.price_mmk).toLocaleString()} MMK)</option>`).join("");
       document.getElementById("modal-walkin").classList.remove("hidden");
     }
 
@@ -1167,12 +1247,12 @@
 
     async function superAddRoom() {
       const hotelId = document.getElementById("sa-hotel-select").value;
-      const no = document.getElementById("sa-room-no").value.trim();
       const type = document.getElementById("sa-room-type").value.trim();
+      const totalRooms = parseInt(document.getElementById("sa-room-total").value, 10) || 1;
       const price = parseInt(document.getElementById("sa-room-price").value, 10);
       const files = Array.from(document.getElementById("sa-room-photo").files || []).slice(0, MAX_ROOM_PHOTOS);
 
-      if (!hotelId || !no || !type || !price) return alert("Fill in hotel, room number, type, and rate.");
+      if (!hotelId || !type || !price) return alert("Fill in hotel, room type, total rooms, and rate.");
 
       const btn = document.getElementById("sa-add-room-btn");
       btn.disabled = true;
@@ -1188,8 +1268,9 @@
           method: "POST",
           body: JSON.stringify({
             hotel_id: hotelId,
-            room_number: no,
+            room_number: "CAT",
             room_type: type,
+            total_rooms: totalRooms,
             price_mmk: price,
             image_url: uploadedUrls[0] || null,
             gallery_urls: uploadedUrls,
@@ -1197,16 +1278,16 @@
           })
         });
 
-        document.getElementById("sa-room-no").value = "";
         document.getElementById("sa-room-type").value = "";
+        document.getElementById("sa-room-total").value = "5";
         document.getElementById("sa-room-price").value = "";
         document.getElementById("sa-room-photo").value = "";
-        alert(`Room and ${uploadedUrls.length} photo(s) saved!`);
+        alert(`Room category (${totalRooms} rooms) and ${uploadedUrls.length} photo(s) saved!`);
       } catch (e) {
         alert("Error: " + e.message);
       } finally {
         btn.disabled = false;
-        btn.textContent = "Save Room & Photos";
+        btn.textContent = "Save Room Category";
       }
     }
 
