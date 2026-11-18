@@ -1,0 +1,1849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StayDirect Myanmar — Direct Hotel Booking & Front-Desk Cloud</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Official Supabase JS v2 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Plus Jakarta Sans', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      -webkit-tap-highlight-color: transparent;
+    }
+    h1, h2, h3, h4, .font-display {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-up {
+      animation: fadeSlideUp 0.22s ease-out forwards;
+    }
+    .spinner {
+      border: 2.5px solid rgba(16, 185, 129, 0.2);
+      border-top-color: #059669;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- Global Loading Overlay -->
+  <div id="global-loader" class="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-[2px] flex items-center justify-center transition-opacity">
+    <div class="bg-white rounded-2xl px-6 py-4 shadow-2xl border border-slate-200 flex items-center gap-3">
+      <div class="spinner"></div>
+      <span id="loader-text" class="text-sm font-semibold text-slate-800">Connecting to StayDirect Cloud...</span>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- TOP NAVIGATION & MULTI-TENANT BAR                                     -->
+  <!-- ===================================================================== -->
+  <header class="sticky top-0 z-40 bg-slate-900 text-white border-b border-slate-800 shadow-md">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2">
+      <!-- Brand & Live DB Status -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-xl bg-emerald-500 flex items-center justify-center text-slate-950 font-extrabold shadow-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l8-4v18m6 0V11l-6-4M9 9v.01M9 12v.01M9 15v.01M9 18v.01"/>
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-display font-bold text-sm sm:text-base tracking-tight">StayDirect</span>
+            <span id="db-status-pill" class="inline-flex items-center gap-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>Live DB Connected</span>
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-400 hidden sm:block">Multi-Tenant Direct Hotel Booking Engine</p>
+        </div>
+      </div>
+
+      <!-- View Mode Switcher -->
+      <div class="flex items-center bg-slate-800 p-1 rounded-xl border border-slate-700 order-3 sm:order-2 w-full sm:w-auto justify-center">
+        <button id="nav-btn-guest" onclick="switchMode('guest')" class="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition bg-emerald-600 text-white shadow">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>
+          </svg>
+          <span>Guest Booking</span>
+        </button>
+        <button id="nav-btn-admin" onclick="switchMode('admin')" class="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-300 hover:text-white relative">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+          <span>Front-Desk</span>
+          <span id="nav-pending-badge" class="hidden bg-amber-500 text-slate-950 text-[10px] font-extrabold px-1.5 rounded-full">0</span>
+        </button>
+      </div>
+
+      <!-- Multi-Tenant Hotel Switcher (Visible when 1+ hotels exist) -->
+      <div class="flex items-center gap-2 order-2 sm:order-3">
+        <select id="hotel-switcher-select" onchange="handleHotelSwitch(this.value)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 max-w-[165px] sm:max-w-[220px] truncate">
+          <option value="yangon-boutique">Loading hotels...</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- SUBSCRIPTION PAUSED / NOT FOUND NOTICE                                -->
+  <!-- ===================================================================== -->
+  <section id="view-paused" class="hidden flex-1 flex items-center justify-center p-6">
+    <div class="max-w-md w-full bg-white rounded-2xl border border-slate-200 shadow-xl p-8 text-center space-y-4">
+      <div class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+      </div>
+      <h2 id="paused-title" class="text-xl font-extrabold text-slate-900">Booking Portal Temporarily Paused</h2>
+      <p id="paused-desc" class="text-sm text-slate-500 leading-relaxed">
+        Online direct reservations for this property are currently paused. Please contact the hotel front desk directly or contact StayDirect Myanmar support to reactivate.
+      </p>
+      <div class="pt-2">
+        <button onclick="handleHotelSwitch('yangon-boutique')" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition">
+          Switch to Active Demo Property
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- VIEW 1: GUEST SELF-SERVICE BOOKING PORTAL                             -->
+  <!-- ===================================================================== -->
+  <main id="view-guest" class="flex-1">
+    <!-- Luxury Hotel Hero Header -->
+    <section class="relative bg-slate-900 text-white overflow-hidden">
+      <div class="absolute inset-0">
+        <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1600&q=80"
+             onerror="this.src='https://placehold.co/1600x600/064e3b/ffffff?text=StayDirect+Myanmar'"
+             alt="Property Cover" class="w-full h-full object-cover opacity-35" />
+        <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/70 to-slate-900/40"></div>
+      </div>
+
+      <div class="relative max-w-6xl mx-auto px-4 sm:px-6 pt-8 pb-20 sm:pt-12 sm:pb-24">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+          <div class="inline-flex items-center gap-2 bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-emerald-200 px-3 py-1 rounded-full text-xs font-semibold">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span>Official Direct Booking • 0% Middleman Fee</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button onclick="openLookupModal()" class="bg-white/15 hover:bg-white/25 backdrop-blur-md text-white border border-white/20 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+              <span>Check My Booking</span>
+            </button>
+            <button onclick="copyHotelPhone()" class="bg-[#7360f2] hover:bg-[#624ee3] text-white px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+              </svg>
+              <span id="guest-hero-phone-btn">Viber / Call</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="max-w-2xl">
+          <div class="flex flex-wrap items-center gap-2 text-amber-300 text-xs sm:text-sm font-medium mb-1.5">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            <span id="guest-hotel-location">Yangon, Myanmar</span>
+            <span class="text-slate-500">•</span>
+            <span id="guest-hotel-phone-text" class="text-slate-200">+95 9 ...</span>
+          </div>
+          <h1 id="guest-hotel-name" class="text-2xl sm:text-4xl font-extrabold tracking-tight text-white mb-2">
+            Loading Property...
+          </h1>
+          <p class="text-sm sm:text-base text-slate-200 leading-relaxed">
+            Reserve directly for guaranteed room lock, local payment via KBZPay, WavePay, or Bank Transfer, and instant confirmation from our front desk.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Search, Dates & Promo Filter Bar -->
+    <section class="max-w-6xl mx-auto px-4 sm:px-6 -mt-12 relative z-10">
+      <div class="bg-white rounded-2xl shadow-xl border border-slate-200/80 p-4 sm:p-5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 items-end">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Check-in Date</label>
+            <input type="date" id="guest-checkin" onchange="handleGuestDateChange()" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Check-out Date</label>
+            <input type="date" id="guest-checkout" onchange="handleGuestDateChange()" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Guests</label>
+            <select id="guest-count" onchange="renderGuestRooms()" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+              <option value="1">1 Adult</option>
+              <option value="2" selected>2 Adults</option>
+              <option value="3">3 Guests</option>
+              <option value="4">4 Guests (Family)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Promo Code</label>
+            <div class="flex gap-1.5">
+              <input type="text" id="guest-promo-input" placeholder="DIRECT10" class="w-full uppercase rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              <button onclick="applyGuestPromo()" class="bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2.5 rounded-xl text-xs font-semibold transition shrink-0">
+                Apply
+              </button>
+            </div>
+          </div>
+          <div class="sm:col-span-2 lg:col-span-1">
+            <div class="bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 text-center">
+              <div class="text-xs text-emerald-700 font-semibold" id="guest-nights-label">1 Night Stay</div>
+              <div class="text-[11px] font-bold text-emerald-900" id="guest-promo-badge">Direct Best Rate</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Available Rooms Grid -->
+    <section class="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+        <div>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900">Available Rooms</h2>
+          <p class="text-xs sm:text-sm text-slate-500">Live room inventory synced directly with the hotel front desk.</p>
+        </div>
+        <div class="flex items-center gap-2 text-xs font-medium text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-sm">
+          <span>Currency:</span>
+          <button onclick="toggleDisplayCurrency()" id="btn-currency-switch" class="font-bold text-emerald-700 hover:underline">
+            MMK (Kyats)
+          </button>
+        </div>
+      </div>
+
+      <div id="guest-rooms-container" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Populated live from Supabase `rooms` table -->
+      </div>
+    </section>
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- VIEW 2A: FRONT-DESK PIN GATE                                          -->
+  <!-- ===================================================================== -->
+  <section id="view-admin-lock" class="hidden flex-1 flex items-center justify-center p-4">
+    <div class="max-w-sm w-full bg-white rounded-2xl border border-slate-200 shadow-xl p-6 sm:p-8 text-center space-y-5 animate-fade-up">
+      <div class="w-14 h-14 rounded-2xl bg-slate-900 text-emerald-400 flex items-center justify-center mx-auto shadow-md">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
+        </svg>
+      </div>
+      <div>
+        <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Front-Desk Security</span>
+        <h2 id="lock-hotel-name" class="text-xl font-extrabold text-slate-900 mt-0.5">Hotel Front-Desk Login</h2>
+        <p class="text-xs text-slate-500 mt-1">Enter your property's 4-digit staff PIN to manage bookings, verify KBZPay/WavePay slips, and update rates.</p>
+      </div>
+
+      <form onsubmit="unlockAdminDashboard(event)" class="space-y-3">
+        <input type="password" id="admin-pin-input" maxlength="8" inputmode="numeric" placeholder="••••" class="w-full text-center tracking-[0.5em] text-xl font-bold rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500" required />
+        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm shadow-sm transition">
+          Unlock Front-Desk
+        </button>
+      </form>
+
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[11px] text-slate-500">
+        Demo Tip: Default PIN for starter properties is <strong class="font-mono text-slate-800">1234</strong>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- VIEW 2B: FRONT-DESK & MANAGER DASHBOARD (UNLOCKED)                    -->
+  <!-- ===================================================================== -->
+  <main id="view-admin-dashboard" class="hidden flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    <!-- Dashboard Header -->
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 id="admin-header-hotel-name" class="text-xl sm:text-2xl font-extrabold text-slate-900">Property Dashboard</h1>
+          <span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-0.5 rounded-full">Live Synced</span>
+        </div>
+        <p class="text-xs sm:text-sm text-slate-500 mt-0.5">All reservations, payment receipts, and room statuses sync immediately to Supabase.</p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button onclick="refreshLiveHotelData(true)" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          <span>Refresh</span>
+        </button>
+        <button onclick="openWalkInModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-sm transition flex items-center gap-1.5">
+          <span>+ Walk-in / Viber Booking</span>
+        </button>
+        <button onclick="lockAdminDashboard()" class="bg-slate-800 hover:bg-slate-900 text-slate-200 px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
+          </svg>
+          <span>Lock</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- KPI Summary Cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Confirmed Direct Revenue</div>
+        <div id="kpi-direct-revenue" class="text-lg sm:text-2xl font-extrabold text-slate-900 mt-1">0 MMK</div>
+        <div class="text-[11px] text-emerald-600 font-medium mt-1">Active & completed stays</div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Est. OTA Fee Saved (18%)</div>
+        <div id="kpi-ota-saved" class="text-lg sm:text-2xl font-extrabold text-emerald-700 mt-1">0 MMK</div>
+        <div class="text-[11px] text-slate-500 font-medium mt-1">Saved vs. Agoda / Booking.com</div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Live Occupancy</div>
+        <div id="kpi-occupancy-pct" class="text-lg sm:text-2xl font-extrabold text-slate-900 mt-1">0%</div>
+        <div id="kpi-occupancy-detail" class="text-[11px] text-slate-500 font-medium mt-1">0 of 0 rooms occupied</div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Pending Slip Verifications</div>
+        <div id="kpi-pending-slips" class="text-lg sm:text-2xl font-extrabold text-amber-600 mt-1">0</div>
+        <div class="text-[11px] text-slate-500 font-medium mt-1">Awaiting front-desk check</div>
+      </div>
+    </div>
+
+    <!-- Admin Sub-Tabs -->
+    <div class="flex items-center gap-2 border-b border-slate-200 mb-6 overflow-x-auto">
+      <button id="admin-tab-bookings" onclick="switchAdminSubTab('bookings')" class="px-4 py-2.5 text-sm font-bold border-b-2 border-emerald-600 text-emerald-700 whitespace-nowrap">
+        Bookings & Payment Slips
+      </button>
+      <button id="admin-tab-rooms" onclick="switchAdminSubTab('rooms')" class="px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap">
+        Room Board & Pricing
+      </button>
+      <button id="admin-tab-settings" onclick="switchAdminSubTab('settings')" class="px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap">
+        Links & Hotel Settings
+      </button>
+    </div>
+
+    <!-- SUB-TAB 1: BOOKINGS & PAYMENT SLIP QUEUE -->
+    <div id="admin-panel-bookings" class="space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200">
+        <div class="flex flex-wrap items-center gap-1.5">
+          <button onclick="setBookingFilter('all')" id="bf-all" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-900 text-white">All</button>
+          <button onclick="setBookingFilter('Pending Verification')" id="bf-Pending Verification" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200">Pending Verification</button>
+          <button onclick="setBookingFilter('Confirmed')" id="bf-Confirmed" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200">Confirmed</button>
+          <button onclick="setBookingFilter('Checked-In')" id="bf-Checked-In" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200">Checked-In</button>
+        </div>
+        <input type="text" id="admin-booking-search" oninput="renderAdminBookingsTable()" placeholder="Search Ref ID, guest, phone..." class="w-full sm:w-64 rounded-xl border border-slate-300 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                <th class="py-3 px-4">Ref ID & Date</th>
+                <th class="py-3 px-4">Guest & Phone</th>
+                <th class="py-3 px-4">Room & Stay</th>
+                <th class="py-3 px-4">Amount & Payment</th>
+                <th class="py-3 px-4">Status</th>
+                <th class="py-3 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admin-bookings-tbody" class="divide-y divide-slate-100 text-sm">
+              <!-- Populated live from Supabase `bookings` -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUB-TAB 2: ROOM & PRICING MANAGER -->
+    <div id="admin-panel-rooms" class="hidden space-y-6">
+      <!-- Add New Room Card -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <h3 class="text-base font-bold text-slate-900 mb-1">+ Add New Room to Inventory</h3>
+        <p class="text-xs text-slate-500 mb-4">New rooms appear immediately on your live Guest Booking portal.</p>
+        <form onsubmit="handleAddNewRoom(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Room Number *</label>
+            <input type="text" id="new-room-number" placeholder="e.g. 302" required class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Room Category / Type *</label>
+            <input type="text" id="new-room-type" placeholder="e.g. Deluxe King View" required class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Nightly Rate (MMK) *</label>
+            <input type="number" id="new-room-price" step="1000" min="10000" placeholder="120000" required class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Max Guests</label>
+            <input type="number" id="new-room-guests" min="1" max="10" value="2" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+          </div>
+          <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs sm:text-sm transition">
+            Save Room
+          </button>
+        </form>
+      </div>
+
+      <!-- Existing Rooms Table / Cards -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-base font-bold text-slate-900">Physical Rooms & Live Rates</h3>
+          <span class="text-xs text-slate-500">Edit price or status directly</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                <th class="py-3 px-4">Room #</th>
+                <th class="py-3 px-4">Category</th>
+                <th class="py-3 px-4">Max Guests</th>
+                <th class="py-3 px-4">Nightly Rate (MMK)</th>
+                <th class="py-3 px-4">Live Status</th>
+              </tr>
+            </thead>
+            <tbody id="admin-rooms-tbody" class="divide-y divide-slate-100 text-sm">
+              <!-- Populated live from Supabase `rooms` -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUB-TAB 3: SHAREABLE LINKS & HOTEL SETTINGS -->
+    <div id="admin-panel-settings" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Shareable Multi-Tenant Links -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-4">
+        <div>
+          <h3 class="text-base font-bold text-slate-900">Property Shareable Links</h3>
+          <p class="text-xs text-slate-500 mt-0.5">Share the Guest Link on Facebook, TikTok, and Viber auto-replies.</p>
+        </div>
+
+        <div class="space-y-3">
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+            <div class="text-xs font-bold text-emerald-700 mb-1">Guest Direct Booking Link</div>
+            <div class="flex items-center gap-2">
+              <input type="text" id="share-guest-url" readonly class="flex-1 bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-700" />
+              <button onclick="copyInputValue('share-guest-url', 'Guest Booking Link copied!')" class="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0">
+                Copy
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+            <div class="text-xs font-bold text-blue-700 mb-1">Front-Desk Dashboard Link</div>
+            <div class="flex items-center gap-2">
+              <input type="text" id="share-admin-url" readonly class="flex-1 bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-700" />
+              <button onclick="copyInputValue('share-admin-url', 'Front-Desk Link copied!')" class="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0">
+                Copy
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hotel Payment & PIN Configuration -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-4">
+        <div>
+          <h3 class="text-base font-bold text-slate-900">Payment Accounts & Staff PIN</h3>
+          <p class="text-xs text-slate-500 mt-0.5">Update the KBZPay/WavePay numbers displayed to guests during checkout.</p>
+        </div>
+
+        <form onsubmit="handleSaveHotelSettings(event)" class="space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Hotel Name</label>
+              <input type="text" id="settings-hotel-name" required class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Contact / Viber Phone</label>
+              <input type="text" id="settings-hotel-phone" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">KBZPay Number</label>
+              <input type="text" id="settings-kbzpay" placeholder="09 795 ..." class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">WavePay Number</label>
+              <input type="text" id="settings-wavepay" placeholder="09 795 ..." class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Front-Desk Staff PIN</label>
+            <input type="text" id="settings-admin-pin" maxlength="8" required class="w-full sm:w-40 rounded-xl border border-slate-300 px-3 py-2 text-sm font-mono" />
+          </div>
+          <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs sm:text-sm transition">
+            Save Property Settings
+          </button>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 1: GUEST DIRECT BOOKING CHECKOUT & SLIP UPLOAD                  -->
+  <!-- ===================================================================== -->
+  <div id="modal-guest-checkout" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden my-auto animate-fade-up">
+      <div class="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
+        <div>
+          <span class="text-[10px] uppercase tracking-wider text-emerald-400 font-bold">Direct Reservation</span>
+          <h3 id="checkout-modal-room-title" class="text-base sm:text-lg font-bold">Room Booking</h3>
+        </div>
+        <button onclick="closeModal('modal-guest-checkout')" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center">✕</button>
+      </div>
+
+      <!-- Checkout Form -->
+      <form id="guest-checkout-form" onsubmit="submitRealGuestBooking(event)" class="p-5 space-y-4 max-h-[82vh] overflow-y-auto">
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex items-center justify-between">
+          <div>
+            <div id="checkout-stay-dates" class="text-xs font-semibold text-slate-700">Dates</div>
+            <div id="checkout-promo-note" class="text-[11px] text-emerald-700 font-medium mt-0.5">Direct Best Rate</div>
+          </div>
+          <div class="text-right">
+            <div id="checkout-total-display" class="text-lg font-extrabold text-slate-900">0 MMK</div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Full Name *</label>
+            <input type="text" id="co-guest-name" required placeholder="e.g. U Kyaw Zin" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Myanmar Phone / Viber *</label>
+            <input type="tel" id="co-guest-phone" required placeholder="+95 9 795 123 456" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+        </div>
+
+        <!-- Payment Method Selector -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">Payment Method *</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" onclick="selectCheckoutPayment('KBZPay')" id="pm-KBZPay" class="co-pm-btn border-2 border-emerald-600 bg-emerald-50/70 rounded-xl p-2.5 text-left">
+              <div class="text-xs font-bold text-blue-700">KBZPay</div>
+              <div class="text-[11px] text-slate-500">Transfer & upload slip</div>
+            </button>
+            <button type="button" onclick="selectCheckoutPayment('WavePay')" id="pm-WavePay" class="co-pm-btn border border-slate-200 rounded-xl p-2.5 text-left">
+              <div class="text-xs font-bold text-amber-600">WavePay</div>
+              <div class="text-[11px] text-slate-500">Transfer & upload slip</div>
+            </button>
+            <button type="button" onclick="selectCheckoutPayment('AYA/CB Bank Transfer')" id="pm-AYA/CB Bank Transfer" class="co-pm-btn border border-slate-200 rounded-xl p-2.5 text-left">
+              <div class="text-xs font-bold text-slate-800">AYA / CB Bank</div>
+              <div class="text-[11px] text-slate-500">Mobile banking slip</div>
+            </button>
+            <button type="button" onclick="selectCheckoutPayment('Pay at Check-in')" id="pm-Pay at Check-in" class="co-pm-btn border border-slate-200 rounded-xl p-2.5 text-left">
+              <div class="text-xs font-bold text-emerald-700">Pay at Check-in</div>
+              <div class="text-[11px] text-slate-500">Pay upon arrival</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Real Transfer Info & File Upload -->
+        <div id="co-transfer-box" class="bg-blue-50/70 border border-blue-200 rounded-xl p-3.5 space-y-2.5">
+          <div class="text-xs space-y-1">
+            <div class="font-bold text-slate-900" id="co-account-label">KBZPay Account Details</div>
+            <div class="text-slate-700">Account / Phone: <strong id="co-account-number" class="font-mono text-blue-800 select-all">09 ...</strong></div>
+            <p class="text-[11px] text-slate-500">Transfer the total amount and attach your payment receipt screenshot below.</p>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Upload Payment Receipt Screenshot (JPG / PNG)</label>
+            <input type="file" id="co-slip-file" accept="image/*" class="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer" />
+          </div>
+        </div>
+
+        <button type="submit" id="co-submit-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm shadow-lg shadow-emerald-600/20 transition">
+          Confirm Direct Reservation
+        </button>
+      </form>
+
+      <!-- Instant Confirmation Card -->
+      <div id="guest-checkout-success" class="hidden p-6 text-center space-y-4">
+        <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-xl font-bold">✓</div>
+        <div>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Saved to Cloud</span>
+          <h4 class="text-xl font-extrabold text-slate-900 mt-0.5">Ref ID: <span id="confirmed-ref-code" class="font-mono text-emerald-700 select-all">DIR-0000</span></h4>
+          <p class="text-xs text-slate-500 mt-1">Your reservation is confirmed in our system. Save your Reference ID below.</p>
+        </div>
+        <div id="confirmed-summary-box" class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-left text-xs space-y-1.5"></div>
+        <div class="grid grid-cols-2 gap-2.5">
+          <button onclick="copyConfirmedReceipt()" class="bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded-xl text-xs">
+            Copy Ref & Details
+          </button>
+          <button onclick="closeModal('modal-guest-checkout')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl text-xs">
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 2: GUEST "CHECK MY BOOKING" LOOKUP                              -->
+  <!-- ===================================================================== -->
+  <div id="modal-booking-lookup" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden animate-fade-up">
+      <div class="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between">
+        <h3 class="text-base font-bold">Check My Booking</h3>
+        <button onclick="closeModal('modal-booking-lookup')" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center">✕</button>
+      </div>
+      <div class="p-5 space-y-4">
+        <p class="text-xs text-slate-500">Enter your Booking Reference ID (e.g. <code class="bg-slate-100 px-1 rounded">DIR-4821</code>) or phone number.</p>
+        <form onsubmit="handleBookingLookup(event)" class="flex gap-2">
+          <input type="text" id="lookup-search-input" required placeholder="DIR-XXXX or 09..." class="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs">Search</button>
+        </form>
+        <div id="lookup-results-list" class="space-y-2.5 max-h-64 overflow-y-auto"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 3: FRONT-DESK VIEW PAYMENT SLIP MODAL                           -->
+  <!-- ===================================================================== -->
+  <div id="modal-view-slip" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden animate-fade-up">
+      <div class="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between">
+        <h3 class="text-base font-bold">Payment Receipt Verification</h3>
+        <button onclick="closeModal('modal-view-slip')" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center">✕</button>
+      </div>
+      <div id="view-slip-modal-content" class="p-5 space-y-4"></div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 4: FRONT-DESK WALK-IN / VIBER BOOKING MODAL                     -->
+  <!-- ===================================================================== -->
+  <div id="modal-walkin-booking" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden animate-fade-up">
+      <div class="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between">
+        <h3 class="text-base font-bold">New Walk-in / Viber Reservation</h3>
+        <button onclick="closeModal('modal-walkin-booking')" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center">✕</button>
+      </div>
+      <form onsubmit="submitWalkInBooking(event)" class="p-5 space-y-3.5">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Guest Name *</label>
+            <input type="text" id="wi-guest-name" required placeholder="Daw Thiri" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Phone / Viber *</label>
+            <input type="tel" id="wi-guest-phone" required placeholder="+95 9 ..." class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Assign Room *</label>
+          <select id="wi-room-select" required class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white"></select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Check-in *</label>
+            <input type="date" id="wi-checkin" required class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Check-out *</label>
+            <input type="date" id="wi-checkout" required class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Payment Method</label>
+            <select id="wi-payment-method" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white">
+              <option value="Cash (Front Desk)">Cash (Front Desk)</option>
+              <option value="KBZPay">KBZPay</option>
+              <option value="WavePay">WavePay</option>
+              <option value="Pay at Check-in">Pay at Check-in</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Initial Status</label>
+            <select id="wi-status" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white">
+              <option value="Checked-In">Checked-In Now</option>
+              <option value="Confirmed">Confirmed (Upcoming)</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition">
+          Save Reservation to Supabase
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. SUPABASE INITIALIZATION (PRODUCTION CREDENTIALS)
+    // =========================================================================
+    const SUPABASE_URL = 'https://xrwqbdjvuztjgkknsank.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_XdUFQkfZs6lkq2yxkXQBdQ_CKWe0wOD';
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const USD_RATE = 4500; // 1 USD = 4,500 MMK
+    const PROMO_CODES = {
+      'DIRECT10': { pct: 10, label: '10% Direct Web Discount' },
+      'YANGON15': { pct: 15, label: '15% Local Resident Special' }
+    };
+
+    const ROOM_FALLBACK_IMAGES = [
+      'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=900&q=80',
+      'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=900&q=80',
+      'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=900&q=80'
+    ];
+
+    // Global Application State
+    let state = {
+      allHotels: [],
+      currentHotel: null,
+      rooms: [],
+      bookings: [],
+      mode: 'guest', // 'guest' | 'admin'
+      adminUnlocked: false,
+      adminSubTab: 'bookings',
+      bookingFilter: 'all',
+      currency: 'MMK',
+      appliedPromo: null,
+      selectedRoomTypeForCheckout: null,
+      selectedPaymentMethod: 'KBZPay',
+      lastConfirmedBooking: null
+    };
+
+    // =========================================================================
+    // 2. UTILITY & UI HELPERS
+    // =========================================================================
+    function getOffsetDate(days) {
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      return d.toISOString().split('T')[0];
+    }
+
+    function calcNights(ci, co) {
+      const diff = Math.round((new Date(co) - new Date(ci)) / (1000 * 60 * 60 * 24));
+      return diff > 0 ? diff : 1;
+    }
+
+    function formatCurrency(mmk) {
+      const val = Number(mmk || 0);
+      if (state.currency === 'USD') {
+        return `$${Math.round(val / USD_RATE).toLocaleString()} USD`;
+      }
+      return `${val.toLocaleString()} MMK`;
+    }
+
+    function setLoading(isLoading, text = 'Syncing with Supabase...') {
+      const el = document.getElementById('global-loader');
+      document.getElementById('loader-text').textContent = text;
+      if (isLoading) el.classList.remove('hidden');
+      else el.classList.add('hidden');
+    }
+
+    function showToast(msg, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const div = document.createElement('div');
+      const isErr = type === 'error';
+      div.className = `pointer-events-auto ${isErr ? 'bg-rose-900 border-rose-700' : 'bg-slate-900 border-emerald-500/50'} text-white border px-4 py-3 rounded-xl shadow-xl text-xs font-medium flex items-center gap-2.5 animate-fade-up`;
+      div.innerHTML = `<span class="${isErr ? 'text-rose-400' : 'text-emerald-400'} font-bold">${isErr ? '!' : '✓'}</span><span>${msg}</span>`;
+      container.appendChild(div);
+      setTimeout(() => {
+        div.style.opacity = '0';
+        div.style.transition = 'opacity 0.25s';
+        setTimeout(() => div.remove(), 250);
+      }, 3400);
+    }
+
+    function openModal(id) {
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    function copyToClipboard(text, message) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast(message);
+      } catch (e) {
+        showToast('Could not copy text.', 'error');
+      }
+      document.body.removeChild(ta);
+    }
+
+    // =========================================================================
+    // 3. MULTI-TENANT URL ROUTING & SUPABASE DATA FETCHING
+    // =========================================================================
+    async function initApp() {
+      const params = new URLSearchParams(window.location.search);
+      const requestedSlug = params.get('hotel') || 'yangon-boutique';
+      const requestedView = params.get('view') === 'admin' ? 'admin' : 'guest';
+      state.mode = requestedView;
+
+      // Initialize default dates
+      document.getElementById('guest-checkin').value = getOffsetDate(0);
+      document.getElementById('guest-checkout').value = getOffsetDate(1);
+      document.getElementById('guest-nights-label').textContent = '1 Night Stay';
+
+      setLoading(true, 'Loading property from Supabase...');
+      try {
+        // Fetch list of hotels for the multi-tenant switcher
+        const { data: hotelsList, error: listErr } = await supabaseClient
+          .from('hotels')
+          .select('id, slug, name, is_active')
+          .order('created_at', { ascending: true });
+
+        if (listErr) throw listErr;
+        state.allHotels = hotelsList || [];
+        populateHotelSwitcher(requestedSlug);
+
+        await loadHotelTenant(requestedSlug);
+      } catch (err) {
+        console.error('Supabase Init Error:', err);
+        document.getElementById('db-status-pill').innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span><span>DB Connection Error</span>`;
+        showToast(`Database error: ${err.message}`, 'error');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function populateHotelSwitcher(activeSlug) {
+      const select = document.getElementById('hotel-switcher-select');
+      if (!state.allHotels.length) {
+        select.innerHTML = `<option value="yangon-boutique">No hotels found</option>`;
+        return;
+      }
+      select.innerHTML = state.allHotels.map(h =>
+        `<option value="${h.slug}" ${h.slug === activeSlug ? 'selected' : ''}>${h.name}${h.is_active ? '' : ' (Paused)'}</option>`
+      ).join('');
+    }
+
+    function handleHotelSwitch(newSlug) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('hotel', newSlug);
+      window.history.replaceState({}, '', url);
+      state.adminUnlocked = false; // Require PIN when switching properties
+      loadHotelTenant(newSlug);
+    }
+
+    async function loadHotelTenant(slug) {
+      setLoading(true, 'Syncing live rooms & bookings...');
+      try {
+        const { data: hotel, error: hotelErr } = await supabaseClient
+          .from('hotels')
+          .select('*')
+          .eq('slug', slug)
+          .maybeSingle();
+
+        if (hotelErr) throw hotelErr;
+
+        if (!hotel) {
+          state.currentHotel = null;
+          showPausedScreen('Property Not Found', `No hotel workspace exists for slug "${slug}".`);
+          return;
+        }
+
+        state.currentHotel = hotel;
+
+        if (!hotel.is_active) {
+          showPausedScreen('Subscription Paused', `Online booking for ${hotel.name} is currently paused.`);
+          return;
+        }
+
+        // Fetch rooms and bookings for this hotel
+        const [roomsRes, bookingsRes] = await Promise.all([
+          supabaseClient
+            .from('rooms')
+            .select('*')
+            .eq('hotel_id', hotel.id)
+            .order('room_number', { ascending: true }),
+          supabaseClient
+            .from('bookings')
+            .select('*')
+            .eq('hotel_id', hotel.id)
+            .order('created_at', { ascending: false })
+        ]);
+
+        if (roomsRes.error) throw roomsRes.error;
+        if (bookingsRes.error) throw bookingsRes.error;
+
+        state.rooms = roomsRes.data || [];
+        state.bookings = bookingsRes.data || [];
+
+        updatePendingNavBadge();
+        renderActiveView();
+      } catch (err) {
+        console.error(err);
+        showToast(`Failed to load hotel data: ${err.message}`, 'error');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    async function refreshLiveHotelData(notify = false) {
+      if (!state.currentHotel) return;
+      await loadHotelTenant(state.currentHotel.slug);
+      if (notify) showToast('Synced latest data from Supabase.');
+    }
+
+    function showPausedScreen(title, desc) {
+      document.getElementById('view-guest').classList.add('hidden');
+      document.getElementById('view-admin-lock').classList.add('hidden');
+      document.getElementById('view-admin-dashboard').classList.add('hidden');
+      document.getElementById('view-paused').classList.remove('hidden');
+      document.getElementById('paused-title').textContent = title;
+      document.getElementById('paused-desc').textContent = desc;
+    }
+
+    // =========================================================================
+    // 4. VIEW SWITCHING (GUEST VS. FRONT-DESK)
+    // =========================================================================
+    function switchMode(newMode) {
+      state.mode = newMode;
+      const url = new URL(window.location.href);
+      if (newMode === 'admin') url.searchParams.set('view', 'admin');
+      else url.searchParams.delete('view');
+      window.history.replaceState({}, '', url);
+      renderActiveView();
+    }
+
+    function renderActiveView() {
+      if (!state.currentHotel || !state.currentHotel.is_active) return;
+
+      document.getElementById('view-paused').classList.add('hidden');
+      const btnGuest = document.getElementById('nav-btn-guest');
+      const btnAdmin = document.getElementById('nav-btn-admin');
+
+      if (state.mode === 'guest') {
+        btnGuest.className = 'flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition bg-emerald-600 text-white shadow';
+        btnAdmin.className = 'flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-300 hover:text-white relative';
+
+        document.getElementById('view-admin-lock').classList.add('hidden');
+        document.getElementById('view-admin-dashboard').classList.add('hidden');
+        document.getElementById('view-guest').classList.remove('hidden');
+
+        renderGuestView();
+      } else {
+        btnAdmin.className = 'flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition bg-emerald-600 text-white shadow relative';
+        btnGuest.className = 'flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-300 hover:text-white';
+
+        document.getElementById('view-guest').classList.add('hidden');
+
+        if (!state.adminUnlocked) {
+          document.getElementById('view-admin-dashboard').classList.add('hidden');
+          document.getElementById('view-admin-lock').classList.remove('hidden');
+          document.getElementById('lock-hotel-name').textContent = state.currentHotel.name;
+        } else {
+          document.getElementById('view-admin-lock').classList.add('hidden');
+          document.getElementById('view-admin-dashboard').classList.remove('hidden');
+          renderAdminDashboard();
+        }
+      }
+    }
+
+    function updatePendingNavBadge() {
+      const pendingCount = state.bookings.filter(b => b.status === 'Pending Verification').length;
+      const badge = document.getElementById('nav-pending-badge');
+      if (pendingCount > 0) {
+        badge.textContent = pendingCount;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    // =========================================================================
+    // 5. GUEST SELF-SERVICE BOOKING VIEW
+    // =========================================================================
+    function renderGuestView() {
+      const h = state.currentHotel;
+      document.getElementById('guest-hotel-name').textContent = h.name;
+      document.getElementById('guest-hotel-location').textContent = h.location || 'Myanmar';
+      document.getElementById('guest-hotel-phone-text').textContent = h.phone || '';
+      document.getElementById('guest-hero-phone-btn').textContent = h.phone ? `Viber: ${h.phone}` : 'Viber Front Desk';
+      document.getElementById('btn-currency-switch').textContent = state.currency === 'MMK' ? 'MMK (Kyats)' : 'USD ($)';
+      renderGuestRooms();
+    }
+
+    function copyHotelPhone() {
+      if (!state.currentHotel?.phone) return;
+      copyToClipboard(state.currentHotel.phone, `Hotel phone / Viber (${state.currentHotel.phone}) copied!`);
+    }
+
+    function handleGuestDateChange() {
+      const ci = document.getElementById('guest-checkin').value;
+      const co = document.getElementById('guest-checkout').value;
+      if (ci && co && co <= ci) {
+        const next = new Date(ci);
+        next.setDate(next.getDate() + 1);
+        document.getElementById('guest-checkout').value = next.toISOString().split('T')[0];
+      }
+      const nights = calcNights(
+        document.getElementById('guest-checkin').value,
+        document.getElementById('guest-checkout').value
+      );
+      document.getElementById('guest-nights-label').textContent = `${nights} Night${nights > 1 ? 's' : ''} Stay`;
+      renderGuestRooms();
+    }
+
+    function applyGuestPromo() {
+      const code = document.getElementById('guest-promo-input').value.trim().toUpperCase();
+      if (!code) {
+        state.appliedPromo = null;
+        document.getElementById('guest-promo-badge').textContent = 'Direct Best Rate';
+        renderGuestRooms();
+        return;
+      }
+      if (PROMO_CODES[code]) {
+        state.appliedPromo = { code, ...PROMO_CODES[code] };
+        document.getElementById('guest-promo-badge').textContent = `${code}: ${PROMO_CODES[code].pct}% OFF`;
+        showToast(`Promo ${code} applied (${PROMO_CODES[code].pct}% off)!`);
+      } else {
+        state.appliedPromo = null;
+        document.getElementById('guest-promo-badge').textContent = 'Invalid Code';
+        showToast('Invalid promo code. Try DIRECT10 or YANGON15.', 'error');
+      }
+      renderGuestRooms();
+    }
+
+    function toggleDisplayCurrency() {
+      state.currency = state.currency === 'MMK' ? 'USD' : 'MMK';
+      renderGuestView();
+    }
+
+    function renderGuestRooms() {
+      const container = document.getElementById('guest-rooms-container');
+      const guestsNeeded = parseInt(document.getElementById('guest-count').value || '2', 10);
+      const ci = document.getElementById('guest-checkin').value;
+      const co = document.getElementById('guest-checkout').value;
+      const nights = calcNights(ci, co);
+
+      if (!state.rooms.length) {
+        container.innerHTML = `<div class="col-span-full bg-white rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-500">No rooms have been published for this property yet.</div>`;
+        return;
+      }
+
+      // Group physical rooms by room_type for clean guest presentation
+      const grouped = {};
+      state.rooms.forEach(room => {
+        if (!grouped[room.room_type]) {
+          grouped[room.room_type] = {
+            room_type: room.room_type,
+            price_mmk: room.price_mmk,
+            max_guests: room.max_guests || 2,
+            allUnits: [],
+            availableUnits: []
+          };
+        }
+        grouped[room.room_type].allUnits.push(room);
+        if (room.status === 'Available') {
+          grouped[room.room_type].availableUnits.push(room);
+        }
+      });
+
+      const typesList = Object.values(grouped);
+
+      container.innerHTML = typesList.map((group, idx) => {
+        const availCount = group.availableUnits.length;
+        const isSoldOut = availCount === 0;
+        const imgUrl = ROOM_FALLBACK_IMAGES[idx % ROOM_FALLBACK_IMAGES.length];
+
+        const baseNightly = group.price_mmk;
+        const finalNightly = state.appliedPromo
+          ? Math.round(baseNightly * (1 - state.appliedPromo.pct / 100))
+          : baseNightly;
+        const stayTotal = finalNightly * nights;
+
+        const badge = isSoldOut
+          ? `<span class="bg-rose-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow">Sold Out</span>`
+          : availCount === 1
+            ? `<span class="bg-amber-500 text-slate-950 text-[11px] font-extrabold px-2.5 py-1 rounded-full shadow">Only 1 Room Left!</span>`
+            : `<span class="bg-emerald-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow">${availCount} Rooms Available</span>`;
+
+        return `
+          <article class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition flex flex-col">
+            <div class="relative h-48 bg-slate-200">
+              <img src="${imgUrl}" onerror="this.src='https://placehold.co/800x500/0f172a/ffffff?text=${encodeURIComponent(group.room_type)}'" alt="${group.room_type}" class="w-full h-full object-cover" />
+              <div class="absolute top-3 left-3">${badge}</div>
+              <div class="absolute bottom-3 right-3 bg-slate-950/75 text-white text-[11px] font-semibold px-2.5 py-1 rounded-lg">
+                Max ${group.max_guests} Guests
+              </div>
+            </div>
+
+            <div class="p-5 flex-1 flex flex-col justify-between space-y-4">
+              <div>
+                <h3 class="text-lg font-bold text-slate-900">${group.room_type}</h3>
+                ${group.max_guests < guestsNeeded ? `<p class="text-[11px] text-amber-600 font-semibold mt-1">Recommended for up to ${group.max_guests} guests</p>` : ''}
+                <div class="flex flex-wrap gap-1.5 mt-3">
+                  <span class="text-[11px] bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg font-medium">Free Wi-Fi</span>
+                  <span class="text-[11px] bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg font-medium">24/7 Backup Power</span>
+                  <span class="text-[11px] bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg font-medium">Breakfast Included</span>
+                </div>
+              </div>
+
+              <div class="pt-3 border-t border-slate-100">
+                <div class="flex items-end justify-between mb-3">
+                  <div>
+                    <div class="text-[11px] text-slate-500">Direct Nightly Rate</div>
+                    ${state.appliedPromo ? `<div class="text-xs text-slate-400 line-through">${formatCurrency(baseNightly)}</div>` : ''}
+                    <div class="text-lg font-extrabold text-slate-900">${formatCurrency(finalNightly)}</div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-[11px] text-slate-500">${nights} Night${nights > 1 ? 's' : ''} Total</div>
+                    <div class="text-sm font-bold text-emerald-700">${formatCurrency(stayTotal)}</div>
+                  </div>
+                </div>
+
+                <button
+                  onclick="openGuestCheckoutModal('${encodeURIComponent(group.room_type)}')"
+                  ${isSoldOut ? 'disabled' : ''}
+                  class="w-full py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition ${
+                    isSoldOut
+                      ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+                  }">
+                  ${isSoldOut ? 'Currently Unavailable' : 'Book Direct Now →'}
+                </button>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    // =========================================================================
+    // 6. GUEST CHECKOUT & REAL SUPABASE SLIP UPLOAD
+    // =========================================================================
+    function openGuestCheckoutModal(encodedRoomType) {
+      const roomType = decodeURIComponent(encodedRoomType);
+      const availRooms = state.rooms.filter(r => r.room_type === roomType && r.status === 'Available');
+      if (!availRooms.length) {
+        showToast('Sorry, that room category just sold out.', 'error');
+        return;
+      }
+
+      state.selectedRoomTypeForCheckout = {
+        roomType,
+        assignedRoom: availRooms[0],
+        pricePerNight: availRooms[0].price_mmk
+      };
+
+      const ci = document.getElementById('guest-checkin').value;
+      const co = document.getElementById('guest-checkout').value;
+      const nights = calcNights(ci, co);
+      const nightly = state.appliedPromo
+        ? Math.round(availRooms[0].price_mmk * (1 - state.appliedPromo.pct / 100))
+        : availRooms[0].price_mmk;
+      const totalMMK = nightly * nights;
+
+      document.getElementById('checkout-modal-room-title').textContent = `${roomType} (Room ${availRooms[0].room_number})`;
+      document.getElementById('checkout-stay-dates').textContent = `${ci} → ${co} (${nights} Night${nights > 1 ? 's' : ''})`;
+      document.getElementById('checkout-promo-note').textContent = state.appliedPromo
+        ? `Promo ${state.appliedPromo.code} (-${state.appliedPromo.pct}%) Applied`
+        : 'Direct Best Rate • 0% OTA Commission';
+      document.getElementById('checkout-total-display').textContent = `${totalMMK.toLocaleString()} MMK`;
+
+      document.getElementById('guest-checkout-form').reset();
+      document.getElementById('guest-checkout-form').classList.remove('hidden');
+      document.getElementById('guest-checkout-success').classList.add('hidden');
+      selectCheckoutPayment('KBZPay');
+      openModal('modal-guest-checkout');
+    }
+
+    function selectCheckoutPayment(method) {
+      state.selectedPaymentMethod = method;
+      document.querySelectorAll('.co-pm-btn').forEach(btn => {
+        btn.className = 'co-pm-btn border border-slate-200 rounded-xl p-2.5 text-left';
+      });
+      const active = document.getElementById(`pm-${method}`);
+      if (active) {
+        active.className = 'co-pm-btn border-2 border-emerald-600 bg-emerald-50/70 rounded-xl p-2.5 text-left';
+      }
+
+      const transferBox = document.getElementById('co-transfer-box');
+      if (method === 'Pay at Check-in') {
+        transferBox.classList.add('hidden');
+      } else {
+        transferBox.classList.remove('hidden');
+        document.getElementById('co-account-label').textContent = `${method} Account Details`;
+        const h = state.currentHotel;
+        const acctNum = method === 'WavePay'
+          ? (h.wavepay_number || h.phone || 'Contact Front Desk')
+          : (h.kbzpay_number || h.phone || 'Contact Front Desk');
+        document.getElementById('co-account-number').textContent = acctNum;
+      }
+    }
+
+    async function submitRealGuestBooking(event) {
+      event.preventDefault();
+      const guestName = document.getElementById('co-guest-name').value.trim();
+      const guestPhone = document.getElementById('co-guest-phone').value.trim();
+      const fileInput = document.getElementById('co-slip-file');
+
+      if (!guestName || !guestPhone || !state.selectedRoomTypeForCheckout) return;
+
+      const ci = document.getElementById('guest-checkin').value;
+      const co = document.getElementById('guest-checkout').value;
+      const nights = calcNights(ci, co);
+      const baseNightly = state.selectedRoomTypeForCheckout.pricePerNight;
+      const finalNightly = state.appliedPromo
+        ? Math.round(baseNightly * (1 - state.appliedPromo.pct / 100))
+        : baseNightly;
+      const totalMMK = finalNightly * nights;
+
+      const submitBtn = document.getElementById('co-submit-btn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Saving Reservation...';
+
+      try {
+        let slipPublicUrl = null;
+
+        // Upload real receipt screenshot to Supabase Storage `payment-slips` if provided
+        if (state.selectedPaymentMethod !== 'Pay at Check-in' && fileInput.files && fileInput.files[0]) {
+          const file = fileInput.files[0];
+          const ext = file.name.split('.').pop() || 'jpg';
+          const filePath = `${state.currentHotel.slug}/${Date.now()}_${Math.floor(Math.random()*1000)}.${ext}`;
+
+          const { error: uploadErr } = await supabaseClient.storage
+            .from('payment-slips')
+            .upload(filePath, file, { cacheControl: '3600', upsert: false });
+
+          if (uploadErr) throw uploadErr;
+
+          const { data: pubData } = supabaseClient.storage
+            .from('payment-slips')
+            .getPublicUrl(filePath);
+
+          slipPublicUrl = pubData.publicUrl;
+        }
+
+        const refCode = 'DIR-' + Math.floor(1000 + Math.random() * 9000);
+        const initialStatus = state.selectedPaymentMethod === 'Pay at Check-in'
+          ? 'Confirmed'
+          : 'Pending Verification';
+
+        const payload = {
+          hotel_id: state.currentHotel.id,
+          room_id: state.selectedRoomTypeForCheckout.assignedRoom.id,
+          reference_code: refCode,
+          guest_name: guestName,
+          guest_phone: guestPhone,
+          check_in: ci,
+          check_out: co,
+          total_mmk: totalMMK,
+          payment_method: state.selectedPaymentMethod,
+          slip_url: slipPublicUrl,
+          status: initialStatus
+        };
+
+        const { data: insertedBooking, error: insertErr } = await supabaseClient
+          .from('bookings')
+          .insert([payload])
+          .select()
+          .single();
+
+        if (insertErr) throw insertErr;
+
+        state.lastConfirmedBooking = {
+          ...insertedBooking,
+          roomLabel: `${state.selectedRoomTypeForCheckout.roomType} (Room ${state.selectedRoomTypeForCheckout.assignedRoom.room_number})`
+        };
+
+        // Show confirmation view
+        document.getElementById('confirmed-ref-code').textContent = refCode;
+        document.getElementById('confirmed-summary-box').innerHTML = `
+          <div class="flex justify-between"><span class="text-slate-500">Property:</span><strong>${state.currentHotel.name}</strong></div>
+          <div class="flex justify-between"><span class="text-slate-500">Guest:</span><strong>${guestName} (${guestPhone})</strong></div>
+          <div class="flex justify-between"><span class="text-slate-500">Room:</span><strong>${state.lastConfirmedBooking.roomLabel}</strong></div>
+          <div class="flex justify-between"><span class="text-slate-500">Dates:</span><strong>${ci} → ${co} (${nights}N)</strong></div>
+          <div class="flex justify-between"><span class="text-slate-500">Payment:</span><strong class="text-blue-700">${state.selectedPaymentMethod} (${initialStatus})</strong></div>
+          <div class="flex justify-between border-t border-slate-200 pt-1.5 mt-1"><span class="font-semibold">Total:</span><strong class="text-emerald-700">${totalMMK.toLocaleString()} MMK</strong></div>
+        `;
+
+        document.getElementById('guest-checkout-form').classList.add('hidden');
+        document.getElementById('guest-checkout-success').classList.remove('hidden');
+        showToast(`Booking ${refCode} saved!`);
+
+        // Refresh bookings list in background
+        await refreshLiveHotelData(false);
+      } catch (err) {
+        console.error('Booking Submit Error:', err);
+        showToast(`Booking failed: ${err.message}`, 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Confirm Direct Reservation';
+      }
+    }
+
+    function copyConfirmedReceipt() {
+      const b = state.lastConfirmedBooking;
+      if (!b) return;
+      const text = [
+        `🏨 ${state.currentHotel.name} — Direct Booking`,
+        `Ref ID: ${b.reference_code}`,
+        `Guest: ${b.guest_name} (${b.guest_phone})`,
+        `Room: ${b.roomLabel}`,
+        `Dates: ${b.check_in} to ${b.check_out}`,
+        `Total: ${Number(b.total_mmk).toLocaleString()} MMK (${b.payment_method} - ${b.status})`
+      ].join('\n');
+      copyToClipboard(text, 'Reservation receipt copied to clipboard!');
+    }
+
+    // =========================================================================
+    // 7. GUEST "CHECK MY BOOKING" LIVE SUPABASE LOOKUP
+    // =========================================================================
+    function openLookupModal() {
+      document.getElementById('lookup-results-list').innerHTML = '';
+      openModal('modal-booking-lookup');
+    }
+
+    async function handleBookingLookup(event) {
+      event.preventDefault();
+      const q = document.getElementById('lookup-search-input').value.trim();
+      const listEl = document.getElementById('lookup-results-list');
+      if (!q || !state.currentHotel) return;
+
+      listEl.innerHTML = `<div class="text-xs text-slate-500 text-center py-4">Searching database...</div>`;
+
+      try {
+        const { data, error } = await supabaseClient
+          .from('bookings')
+          .select('*')
+          .eq('hotel_id', state.currentHotel.id)
+          .or(`reference_code.ilike.%${q}%,guest_phone.ilike.%${q}%`)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          listEl.innerHTML = `<div class="text-xs text-slate-500 bg-slate-50 p-3 rounded-xl text-center">No reservation found matching "${q}".</div>`;
+          return;
+        }
+
+        listEl.innerHTML = data.map(b => {
+          const roomObj = state.rooms.find(r => r.id === b.room_id);
+          const roomLabel = roomObj ? `${roomObj.room_type} (Rm ${roomObj.room_number})` : 'Assigned Room';
+          return `
+            <div class="border border-slate-200 rounded-xl p-3 bg-slate-50 text-xs space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="font-mono font-bold text-emerald-700">${b.reference_code}</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">${b.status}</span>
+              </div>
+              <div class="font-bold text-slate-900">${b.guest_name} • ${roomLabel}</div>
+              <div class="text-slate-600">${b.check_in} → ${b.check_out}</div>
+              <div class="flex justify-between pt-1 border-t border-slate-200/70 font-semibold">
+                <span>${Number(b.total_mmk).toLocaleString()} MMK</span>
+                <span class="text-slate-500">${b.payment_method}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        listEl.innerHTML = `<div class="text-xs text-rose-600 p-3 text-center">Error: ${err.message}</div>`;
+      }
+    }
+
+    // =========================================================================
+    // 8. FRONT-DESK PIN AUTHENTICATION & DASHBOARD
+    // =========================================================================
+    function unlockAdminDashboard(event) {
+      event.preventDefault();
+      const entered = document.getElementById('admin-pin-input').value.trim();
+      const expected = String(state.currentHotel?.admin_pin || '1234');
+      if (entered === expected) {
+        state.adminUnlocked = true;
+        document.getElementById('admin-pin-input').value = '';
+        showToast('Front-Desk unlocked.');
+        renderActiveView();
+      } else {
+        showToast('Incorrect Staff PIN.', 'error');
+      }
+    }
+
+    function lockAdminDashboard() {
+      state.adminUnlocked = false;
+      renderActiveView();
+      showToast('Front-Desk locked.');
+    }
+
+    function switchAdminSubTab(tab) {
+      state.adminSubTab = tab;
+      ['bookings', 'rooms', 'settings'].forEach(t => {
+        const tabBtn = document.getElementById(`admin-tab-${t}`);
+        const panel = document.getElementById(`admin-panel-${t}`);
+        if (t === tab) {
+          tabBtn.className = 'px-4 py-2.5 text-sm font-bold border-b-2 border-emerald-600 text-emerald-700 whitespace-nowrap';
+          panel.classList.remove('hidden');
+        } else {
+          tabBtn.className = 'px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap';
+          panel.classList.add('hidden');
+        }
+      });
+      renderAdminDashboard();
+    }
+
+    function renderAdminDashboard() {
+      const h = state.currentHotel;
+      document.getElementById('admin-header-hotel-name').textContent = h.name;
+
+      // Compute Live KPIs
+      const validBookings = state.bookings.filter(b =>
+        ['Confirmed', 'Checked-In', 'Checked-Out'].includes(b.status)
+      );
+      const confirmedRevenue = validBookings.reduce((sum, b) => sum + Number(b.total_mmk || 0), 0);
+      const otaSaved = Math.round(confirmedRevenue * 0.18);
+
+      const totalRooms = state.rooms.length;
+      const occupiedRooms = state.rooms.filter(r => r.status === 'Occupied').length;
+      const occPct = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
+      const pendingSlips = state.bookings.filter(b => b.status === 'Pending Verification').length;
+
+      document.getElementById('kpi-direct-revenue').textContent = `${confirmedRevenue.toLocaleString()} MMK`;
+      document.getElementById('kpi-ota-saved').textContent = `${otaSaved.toLocaleString()} MMK`;
+      document.getElementById('kpi-occupancy-pct').textContent = `${occPct}%`;
+      document.getElementById('kpi-occupancy-detail').textContent = `${occupiedRooms} of ${totalRooms} rooms occupied`;
+      document.getElementById('kpi-pending-slips').textContent = pendingSlips;
+
+      if (state.adminSubTab === 'bookings') renderAdminBookingsTable();
+      if (state.adminSubTab === 'rooms') renderAdminRoomsTable();
+      if (state.adminSubTab === 'settings') renderAdminSettingsPanel();
+    }
+
+    // =========================================================================
+    // 9. ADMIN BOOKINGS & SLIP VERIFICATION ACTIONS
+    // =========================================================================
+    function setBookingFilter(filter) {
+      state.bookingFilter = filter;
+      ['all', 'Pending Verification', 'Confirmed', 'Checked-In'].forEach(f => {
+        const btn = document.getElementById(`bf-${f}`);
+        if (btn) {
+          btn.className = f === filter
+            ? 'px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-900 text-white'
+            : 'px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200';
+        }
+      });
+      renderAdminBookingsTable();
+    }
+
+    function renderAdminBookingsTable() {
+      const tbody = document.getElementById('admin-bookings-tbody');
+      const query = (document.getElementById('admin-booking-search').value || '').trim().toLowerCase();
+
+      const rows = state.bookings.filter(b => {
+        if (state.bookingFilter !== 'all' && b.status !== state.bookingFilter) return false;
+        if (query) {
+          const hay = `${b.reference_code} ${b.guest_name} ${b.guest_phone}`.toLowerCase();
+          if (!hay.includes(query)) return false;
+        }
+        return true;
+      });
+
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-xs text-slate-400">No bookings match your current filter.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = rows.map(b => {
+        const roomObj = state.rooms.find(r => r.id === b.room_id);
+        const roomDisplay = roomObj
+          ? `${roomObj.room_type} (Rm ${roomObj.room_number})`
+          : 'Unassigned Room';
+
+        const statusColors = {
+          'Pending Verification': 'bg-amber-100 text-amber-800',
+          'Confirmed': 'bg-blue-100 text-blue-800',
+          'Checked-In': 'bg-emerald-600 text-white',
+          'Checked-Out': 'bg-slate-200 text-slate-700',
+          'Cancelled': 'bg-rose-100 text-rose-700'
+        };
+
+        return `
+          <tr class="hover:bg-slate-50/70">
+            <td class="py-3.5 px-4 align-top">
+              <div class="font-mono font-bold text-xs text-slate-900">${b.reference_code}</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">${new Date(b.created_at).toLocaleDateString()}</div>
+            </td>
+            <td class="py-3.5 px-4 align-top">
+              <div class="font-bold text-xs sm:text-sm text-slate-900">${b.guest_name}</div>
+              <div class="text-xs text-slate-500 mt-0.5">${b.guest_phone}</div>
+            </td>
+            <td class="py-3.5 px-4 align-top">
+              <div class="font-semibold text-xs text-slate-800">${roomDisplay}</div>
+              <div class="text-[11px] text-slate-500 mt-0.5">${b.check_in} → ${b.check_out}</div>
+            </td>
+            <td class="py-3.5 px-4 align-top">
+              <div class="font-extrabold text-xs sm:text-sm text-slate-900">${Number(b.total_mmk).toLocaleString()} MMK</div>
+              <div class="text-[11px] text-slate-500">${b.payment_method}</div>
+              ${b.slip_url ? `
+                <button onclick="openViewSlipModal('${b.id}')" class="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:underline">
+                  View Uploaded Slip ↗
+                </button>
+              ` : ''}
+            </td>
+            <td class="py-3.5 px-4 align-top">
+              <span class="inline-block px-2.5 py-1 rounded-full text-[11px] font-bold ${statusColors[b.status] || 'bg-slate-100 text-slate-700'}">
+                ${b.status}
+              </span>
+            </td>
+            <td class="py-3.5 px-4 align-top text-right space-x-1 whitespace-nowrap">
+              ${b.status === 'Pending Verification' ? `
+                <button onclick="updateBookingAndRoomStatus('${b.id}', 'Confirmed', null)" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-2.5 py-1.5 rounded-lg text-[11px] transition">
+                  Approve & Confirm
+                </button>
+              ` : ''}
+              ${b.status === 'Confirmed' ? `
+                <button onclick="updateBookingAndRoomStatus('${b.id}', 'Checked-In', 'Occupied')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-2.5 py-1.5 rounded-lg text-[11px] transition">
+                  Check-In
+                </button>
+              ` : ''}
+              ${b.status === 'Checked-In' ? `
+                <button onclick="updateBookingAndRoomStatus('${b.id}', 'Checked-Out', 'Cleaning')" class="bg-slate-800 hover:bg-slate-900 text-white font-semibold px-2.5 py-1.5 rounded-lg text-[11px] transition">
+                  Check-Out
+                </button>
+              ` : ''}
+              ${['Pending Verification', 'Confirmed'].includes(b.status) ? `
+                <button onclick="updateBookingAndRoomStatus('${b.id}', 'Cancelled', 'Available')" class="text-slate-400 hover:text-rose-600 px-2 py-1.5 text-xs font-bold" title="Cancel Booking">
+                  ✕
+                </button>
+              ` : ''}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openViewSlipModal(bookingId) {
+      const b = state.bookings.find(x => x.id === bookingId);
+      if (!b) return;
+
+      document.getElementById('view-slip-modal-content').innerHTML = `
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-1">
+          <div class="flex justify-between"><span class="text-slate-500">Ref ID:</span><strong>${b.reference_code}</strong></div>
+          <div class="flex justify-between"><span class="text-slate-500">Guest:</span><strong>${b.guest_name} (${b.guest_phone})</strong></div>
+          <div class="flex justify-between"><span class="text-slate-500">Amount:</span><strong class="text-emerald-700">${Number(b.total_mmk).toLocaleString()} MMK (${b.payment_method})</strong></div>
+        </div>
+        <div class="border border-slate-200 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center min-h-[200px]">
+          ${b.slip_url
+            ? `<img src="${b.slip_url}" alt="Uploaded Payment Slip" class="max-h-80 w-auto object-contain" />`
+            : `<p class="text-xs text-slate-400 p-6">No receipt image attached.</p>`
+          }
+        </div>
+        <div class="flex gap-2">
+          ${b.status === 'Pending Verification' ? `
+            <button onclick="closeModal('modal-view-slip'); updateBookingAndRoomStatus('${b.id}', 'Confirmed', null);" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs">
+              Approve & Confirm Booking
+            </button>
+          ` : ''}
+          <button onclick="closeModal('modal-view-slip')" class="px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700">
+            Close
+          </button>
+        </div>
+      `;
+      openModal('modal-view-slip');
+    }
+
+    async function updateBookingAndRoomStatus(bookingId, newBookingStatus, newRoomStatus) {
+      const booking = state.bookings.find(b => b.id === bookingId);
+      if (!booking) return;
+
+      setLoading(true, `Updating ${booking.reference_code}...`);
+      try {
+        const { error: bErr } = await supabaseClient
+          .from('bookings')
+          .update({ status: newBookingStatus })
+          .eq('id', bookingId);
+
+        if (bErr) throw bErr;
+
+        if (newRoomStatus && booking.room_id) {
+          const { error: rErr } = await supabaseClient
+            .from('rooms')
+            .update({ status: newRoomStatus })
+            .eq('id', booking.room_id);
+          if (rErr) throw rErr;
+        }
+
+        showToast(`Booking ${booking.reference_code} updated to ${newBookingStatus}.`);
+        await refreshLiveHotelData(false);
+      } catch (err) {
+        console.error(err);
+        showToast(`Update failed: ${err.message}`, 'error');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // =========================================================================
+    // 10. FRONT-DESK WALK-IN / VIBER BOOKING CREATION
+    // =========================================================================
+    function openWalkInModal() {
+      const select = document.getElementById('wi-room-select');
+      select.innerHTML = state.rooms.map(r =>
+        `<option value="${r.id}">Room ${r.room_number} — ${r.room_type} (${Number(r.price_mmk).toLocaleString()} MMK) [${r.status}]</option>`
+      ).join('');
+      document.getElementById('wi-checkin').value = getOffsetDate(0);
+      document.getElementById('wi-checkout').value = getOffsetDate(1);
+      openModal('modal-walkin-booking');
+    }
+
+    async function submitWalkInBooking(event) {
+      event.preventDefault();
+      const guestName = document.getElementById('wi-guest-name').value.trim();
+      const guestPhone = document.getElementById('wi-guest-phone').value.trim();
+      const roomId = document.getElementById('wi-room-select').value;
+      const checkIn = document.getElementById('wi-checkin').value;
+      const checkOut = document.getElementById('wi-checkout').value;
+      const paymentMethod = document.getElementById('wi-payment-method').value;
+      const status = document.getElementById('wi-status').value;
+
+      const roomObj = state.rooms.find(r => r.id === roomId);
+      if (!roomObj) return;
+
+      const nights = calcNights(checkIn, checkOut);
+      const totalMMK = Number(roomObj.price_mmk) * nights;
+      const refCode = 'WLK-' + Math.floor(1000 + Math.random() * 9000);
+
+      setLoading(true, 'Saving Walk-in Reservation...');
+      try {
+        const { error: bErr } = await supabaseClient
+          .from('bookings')
+          .insert([{
+            hotel_id: state.currentHotel.id,
+            room_id: roomId,
+            reference_code: refCode,
+            guest_name: guestName,
+            guest_phone: guestPhone,
+            check_in: checkIn,
+            check_out: checkOut,
+            total_mmk: totalMMK,
+            payment_method: paymentMethod,
+            status
+          }]);
+
+        if (bErr) throw bErr;
+
+        if (status === 'Checked-In') {
+          const { error: rErr } = await supabaseClient
+            .from('rooms')
+            .update({ status: 'Occupied' })
+            .eq('id', roomId);
+          if (rErr) throw rErr;
+        }
+
+        closeModal('modal-walkin-booking');
+        showToast(`Walk-in reservation ${refCode} saved!`);
+        await refreshLiveHotelData(false);
+      } catch (err) {
+        console.error(err);
+        showToast(`Error saving walk-in: ${err.message}`, 'error');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // =========================================================================
+    // 11. ROOM & PRICING MANAGER (SUPABASE `rooms` TABLE)
+    // =========================================================================
+    function renderAdminRoomsTable() {
+      const tbody = document.getElementById('admin-rooms-tbody');
+      if (!state.rooms.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-xs text-slate-400">No rooms added yet. Use the form above to add your first room.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = state.rooms.map(r => `
+        <tr class="hover:bg-slate-50/70">
+          <td class="py-3 px-4 font-extrabold text-slate-900">Room ${r.room_number}</td>
+          <td class="py-3 px-4 font-semibold text-slate-800">${r.room_type}</td>
+          <td class="py-3 px-4 text-xs text-slate-600">${r.max_guests} Guests</td>
+          <td class="py-3 px-4">
+            <div class="flex items-center gap-1.5">
+              <input type="number" step="1000" value="${r.price_mmk}" id="room-price-${r.id}" class="w-28 rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-bold text-slate-900" />
+              <button onclick="saveRoomPrice('${r.id}')" class="bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-semibold px-2.5 py-1 rounded-lg transition">
+                Save
+              </button>
+            </div>
+          </td>
+          <td class="py-3 px-4">
+            <select onchange="saveRoomStatus('${r.id}', this.value)" class="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-bold bg-white">
+              ${['Available', 'Occupied', 'Cleaning', 'Blocked'].map(st =>
+                `<option value="${st}" ${r.status === st ? 'selected' : ''}>${st}</option>`
+              ).join('')}
+            </select>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function handleAddNewRoom(event) {
+      event.preventDefault();
+      const roomNumber = document.getElementById('new-room-number').value.trim();
+      const roomType = document.getElementById('new-room-type').value.trim();
+      const priceMMK = parseInt(document.getElementById('new-room-price').value, 10);
+      const maxGuests = parseInt(document.getElementById('new-room-guests').value || '2', 10);
+
+      setLoading(true, 'Adding room to Supabase...');
+      try {
+        const { error } = await supabaseClient
+          .from('rooms')
+          .insert([{
+            hotel_id: state.currentHotel.id,
+            room_number: roomNumber,
+            room_type: roomType,
+            price_mmk: priceMMK,
+            max_guests: maxGuests,
+            status: 'Available'
+          }]);
+
+        if (error) throw error;
+
+        event.target.reset();
+        document.getElementById('new-room-guests').value = '2';
+        showToast(`Room ${roomNumber} (${roomType}) added!`);
+        await refreshLiveHotelData(false);
+      } catch (err) {
+        showToast(`Could not add room: ${err.message}`, 'error');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    async function saveRoomPrice(roomId) {
+      const val = parseInt(document.getElementById(`room-price-${roomId}`).value, 10);
+      if (!val || val < 1000) {
+        showToast('Enter a valid price in MMK.', 'error');
+        return;
+      }
+
+      setLoading(true, 'Updating nightly rate...');
+      try {
+        const { error } = await supabaseClient
+          .from('rooms')
+          .update({ price_mmk: val })
+          .eq('id', roomId);
+
+        if (error) throw error;
+        showToast(`Rate updated to ${val.toLocaleString()} MMK!`);
+        await refreshLiveHotelData(false);
+      } catch (err) {
+        showToast(`Price update failed: ${err.message}`, 'error');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    async function saveRoomStatus(roomId, newStatus) {
+      setLoading(true, 'Updating room status...');
+      try {
+        const { error } = await supabaseClient
+          .from('rooms')
+          .update({ status: newStatus })
+          .eq('id', roomId);
+
+        if (error) throw error;
+        showToast(`Room status set to ${newStatus}.`);
+        await refreshLiveHotelData(false);
+      } catch (err) {
+        showToast(`Status update failed: ${err.message}`, 'error');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // =========================================================================
+    // 12. HOTEL SETTINGS & SHAREABLE LINKS PANEL
+    // =========================================================================
+    function renderAdminSettingsPanel() {
+      const h = state.currentHotel;
+      const baseUrl = `${window.location.origin}${window.location.pathname}`;
+      document.getElementById('share-guest-url').value = `${baseUrl}?hotel=${h.slug}`;
+      document.getElementById('share-admin-url').value = `${baseUrl}?hotel=${h.slug}&view=admin`;
+
+      document.getElementById('settings-hotel-name').value = h.name || '';
+      document.getElementById('settings-hotel-phone').value = h.phone || '';
+      document.getElementById('settings-kbzpay').value = h.kbzpay_number || '';
+      document.getElementById('settings-wavepay').value = h.wavepay_number || '';
+      document.getElementById('settings-admin-pin').value = h.admin_pin || '1234';
+    }
+
+    function copyInputValue(inputId, msg) {
+      const val = document.getElementById(inputId).value;
+      copyToClipboard(val, msg);
+    }
+
+    async function handleSaveHotelSettings(event) {
+      event.preventDefault();
+      const updates = {
+        name: document.getElementById('settings-hotel-name').value.trim(),
+        phone: document.getElementById('settings-hotel-phone').value.trim(),
+        kbzpay_number: document.getElementById('settings-kbzpay').value.trim(),
+        wavepay_number: document.getElementById('settings-wavepay').value.trim(),
+        admin_pin: document.getElementById('settings-admin-pin').value.trim() || '1234'
+      };
+
+      setLoading(true, 'Saving property settings...');
+      try {
+        const { error } = await supabaseClient
+          .from('hotels')
+          .update(updates)
+          .eq('id', state.currentHotel.id);
+
+        if (error) throw error;
+        showToast('Property settings saved to Supabase!');
+        await refreshLiveHotelData(false);
+      } catch (err) {
+        showToast(`Could not update settings (check RLS update policy on hotels): ${err.message}`, 'error');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // Start Application
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
