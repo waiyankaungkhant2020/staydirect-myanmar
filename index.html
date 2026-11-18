@@ -81,7 +81,7 @@
       <div>
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-bold text-slate-900">Select Room Category</h2>
-          <span class="text-xs text-slate-500" id="guest-room-count">Checking availability...</span>
+          <span class="text-xs text-slate-500" id="guest-room-count">Checking online availability...</span>
         </div>
         <div id="guest-rooms-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
       </div>
@@ -91,11 +91,10 @@
     <!-- 2. HOTEL OWNER & STAFF DASHBOARD (?view=admin)            -->
     <!-- ========================================================= -->
     <section id="view-admin" class="hidden fade-in space-y-6">
-      <!-- Role-Aware PIN Login -->
       <div id="admin-pin-gate" class="max-w-sm mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-center my-8">
         <div class="w-11 h-11 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center mx-auto mb-3 font-bold">PIN</div>
         <h2 class="text-lg font-bold text-slate-900">Hotel Portal Access</h2>
-        <p class="text-xs text-slate-500 mt-1 mb-4">Enter your <b>Staff PIN</b> (bookings & rooms) or <b>Owner PIN</b> (full access + payment & MMQR settings)</p>
+        <p class="text-xs text-slate-500 mt-1 mb-4">Enter your <b>Staff PIN</b> (bookings & online quota) or <b>Owner PIN</b> (full access + payment & MMQR settings)</p>
         <input type="password" id="admin-pin-input" placeholder="Enter Staff or Owner PIN" maxlength="8" class="w-full text-center tracking-widest text-lg font-bold px-4 py-2.5 border border-slate-300 rounded-xl mb-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none" onkeydown="if(event.key==='Enter') verifyAdminPin()" />
         <button onclick="verifyAdminPin()" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-sm transition">
           Unlock Portal
@@ -103,7 +102,6 @@
       </div>
 
       <div id="admin-workspace" class="hidden space-y-6">
-        <!-- KPI Cards -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
             <div class="text-xs font-medium text-slate-500">Confirmed Direct Bookings</div>
@@ -118,16 +116,15 @@
             <div class="text-xl font-extrabold text-amber-600 mt-1" id="kpi-pending">0</div>
           </div>
           <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-            <div class="text-xs font-medium text-slate-500">Online Room Allocation</div>
+            <div class="text-xs font-medium text-slate-500">Today's Online Quota</div>
             <div class="text-xl font-extrabold text-slate-900 mt-1" id="kpi-available">0 / 0</div>
           </div>
         </div>
 
-        <!-- Navigation Tabs + Excel Download -->
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
           <div class="flex flex-wrap gap-2">
             <button onclick="switchAdminTab('bookings')" id="tab-admin-bookings" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-slate-900 text-white">Incoming Bookings & Slips</button>
-            <button onclick="switchAdminTab('rooms')" id="tab-admin-rooms" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-white text-slate-600 border border-slate-200">Online Room Allocation & Rates</button>
+            <button onclick="switchAdminTab('rooms')" id="tab-admin-rooms" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-white text-slate-600 border border-slate-200">Online Room Quota & Inclusions</button>
             <button onclick="switchAdminTab('settings')" id="tab-admin-settings" class="hidden px-3.5 py-2 rounded-lg text-xs font-bold bg-white text-slate-600 border border-slate-200">Owner Settings (MMQR & PINs)</button>
           </div>
 
@@ -154,32 +151,42 @@
           </div>
         </div>
 
-        <!-- TAB 2: ROOM TYPES, ALLOCATION & PHOTOS -->
+        <!-- TAB 2: ROOM TYPES, ONLINE QUOTA & INCLUSIONS -->
         <div id="admin-panel-rooms" class="hidden space-y-4">
-          <div class="bg-white p-4 rounded-xl border border-slate-200 flex flex-wrap items-end gap-3">
-            <div>
+          <div class="p-3.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900">
+            <b>Tip for Walk-Ins & Phone Calls:</b> Set your <b>Online Quota</b> to only the rooms you want to sell online (e.g., 3 or 4 rooms out of 10). If you receive a walk-in or phone booking in your front-desk system, tap <b>-1</b> on that category card to adjust online availability immediately.
+          </div>
+
+          <div class="bg-white p-4 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
+            <div class="lg:col-span-2">
               <label class="block text-xs font-semibold text-slate-600 mb-1">Room Type / Category *</label>
-              <input type="text" id="new-room-type" placeholder="e.g. Deluxe Garden View" class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-52" />
+              <input type="text" id="new-room-type" placeholder="e.g. Deluxe Garden View" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Rooms Allocated Online *</label>
-              <input type="number" id="new-room-total" value="5" min="1" class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-32" />
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Online Quota *</label>
+              <input type="number" id="new-room-total" value="3" min="1" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">Direct Rate (MMK) *</label>
-              <input type="number" id="new-room-price" placeholder="95000" class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-36" />
+              <input type="number" id="new-room-price" placeholder="95000" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">Max Guests</label>
-              <input type="number" id="new-room-guests" value="2" min="1" class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-24" />
+              <input type="number" id="new-room-guests" value="2" min="1" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">Photos (Up to 4)</label>
-              <input type="file" id="new-room-photo" accept="image/*" multiple class="text-xs text-slate-500" />
+              <input type="file" id="new-room-photo" accept="image/*" multiple class="w-full text-xs text-slate-500" />
             </div>
-            <button onclick="adminAddRoom()" id="btn-admin-add-room" class="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-slate-800">
-              + Add Room Type
-            </button>
+            <div class="sm:col-span-2 lg:col-span-4">
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Inclusions & Room Highlights (comma-separated)</label>
+              <input type="text" id="new-room-amenities" value="Breakfast Included, Free Wi-Fi, Non-Smoking" placeholder="e.g. Breakfast Included, Free Wi-Fi, Non-Smoking, Balcony" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+            </div>
+            <div class="lg:col-span-2">
+              <button onclick="adminAddRoom()" id="btn-admin-add-room" class="w-full px-4 py-2.5 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-slate-800">
+                + Add Room Type
+              </button>
+            </div>
           </div>
           <div id="admin-rooms-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
         </div>
@@ -194,7 +201,6 @@
             <span class="px-2.5 py-1 bg-indigo-100 text-indigo-800 text-[11px] font-bold rounded-full">OWNER ONLY</span>
           </div>
 
-          <!-- Share Links -->
           <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs space-y-2">
             <div>
               <div class="font-bold text-emerald-900">1. Guest Direct Booking Link (Paste in Facebook "Book Now" & Viber):</div>
@@ -206,7 +212,6 @@
             </div>
           </div>
 
-          <!-- MMQR Upload Box -->
           <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
             <div class="flex items-start justify-between gap-3">
               <div>
@@ -230,7 +235,6 @@
             </div>
           </div>
 
-          <!-- Optional Individual Numbers & Role PINs -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">KBZPay Number (Leave blank to hide)</label>
@@ -285,7 +289,6 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <!-- Column 1: Onboard New Hotel -->
           <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             <h3 class="font-bold text-sm text-slate-900 border-b pb-2">1. Onboard New Hotel Client</h3>
             <div>
@@ -323,9 +326,8 @@
             </button>
           </div>
 
-          <!-- Column 2: Add Room Category -->
           <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-            <h3 class="font-bold text-sm text-slate-900 border-b pb-2">2. Add Room Category & Photos</h3>
+            <h3 class="font-bold text-sm text-slate-900 border-b pb-2">2. Add Room Category & Inclusions</h3>
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">Select Client Hotel</label>
               <select id="sa-hotel-select" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"></select>
@@ -337,12 +339,16 @@
             <div class="grid grid-cols-2 gap-2">
               <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">Online Room Quota *</label>
-                <input type="number" id="sa-room-total" value="5" min="1" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+                <input type="number" id="sa-room-total" value="3" min="1" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
               </div>
               <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">Rate (MMK) *</label>
                 <input type="number" id="sa-room-price" placeholder="85000" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
               </div>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Inclusions & Highlights</label>
+              <input type="text" id="sa-room-amenities" value="Breakfast Included, Free Wi-Fi, Non-Smoking" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">Upload Room Photos (1 to 4 images)</label>
@@ -353,7 +359,6 @@
             </button>
           </div>
 
-          <!-- Column 3: Client Hotels List -->
           <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             <h3 class="font-bold text-sm text-slate-900 border-b pb-2">3. Client Hotels & Licenses</h3>
             <div id="sa-hotels-list" class="space-y-3 max-h-[450px] overflow-y-auto pr-1"></div>
@@ -385,7 +390,7 @@
     </div>
   </div>
 
-  <!-- GUEST BOOKING MODAL (WITH MMQR DISPLAY) -->
+  <!-- GUEST BOOKING MODAL -->
   <div id="modal-book" class="hidden fixed inset-0 bg-slate-950/60 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between border-b pb-3">
@@ -410,7 +415,6 @@
           <select id="mb-payment" onchange="toggleSlipBox()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"></select>
         </div>
 
-        <!-- Digital Transfer Box (Shows MMQR Image OR Wallet Number) -->
         <div id="mb-wallet-info" class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-2.5">
           <div id="mb-mmqr-container" class="hidden text-center space-y-2">
             <div class="font-bold text-slate-800">Scan Hotel MMQR (KBZPay, WavePay, AYA, CB, uab & all banks)</div>
@@ -461,7 +465,7 @@
   </div>
 
   <!-- ========================================================= -->
-  <!-- JAVASCRIPT LOGIC: MMQR + CSV EXPORT + OWNER/STAFF ROLES   -->
+  <!-- JAVASCRIPT LOGIC: INCLUSIONS + QUICK QUOTA + ROLES        -->
   <!-- ========================================================= -->
   <script>
     const SUPABASE_URL = "https://xrwqbdjvuztjgkknsank.supabase.co";
@@ -509,7 +513,7 @@
     let hotelRooms = [];
     let hotelBookings = [];
     let selectedRoomForBooking = null;
-    let loggedInRole = null; // 'owner' or 'staff'
+    let loggedInRole = null;
 
     let activeGalleryPhotos = [];
     let activeGalleryIndex = 0;
@@ -526,8 +530,13 @@
       return arr.slice(0, MAX_ROOM_PHOTOS);
     }
 
+    function parseAmenities(room) {
+      const raw = room.amenities || "Free Wi-Fi, Non-Smoking, Direct Rate";
+      return raw.split(",").map(s => s.trim()).filter(Boolean);
+    }
+
     function getCategoryInventoryForDates(room, checkInStr, checkOutStr) {
-      const total = Number(room.total_rooms) || 1;
+      const total = Math.max(0, Number(room.total_rooms ?? 1));
       if (room.status === "Blocked") {
         return { total, booked: total, available: 0, blocked: true };
       }
@@ -627,7 +636,7 @@
       renderAdminDashboard();
     }
 
-    // RENDER GUEST ROOM CATEGORIES
+    // RENDER GUEST ROOM CATEGORIES WITH AMENITY BADGES
     function renderGuestRooms() {
       const grid = document.getElementById("guest-rooms-grid");
       const ci = document.getElementById("guest-checkin").value;
@@ -640,16 +649,17 @@
         return;
       }
 
-      let totalAvailableAcrossHotel = 0;
+      let totalAvailableOnline = 0;
 
       grid.innerHTML = hotelRooms.map(room => {
         const inv = getCategoryInventoryForDates(room, ci, co);
-        totalAvailableAcrossHotel += inv.available;
+        totalAvailableOnline += inv.available;
         const isAvail = inv.available > 0;
         const total = room.price_mmk * nights;
         const photos = getRoomPhotos(room);
         const coverImg = photos[0] || FALLBACK_ROOM_IMG;
         const photoCount = photos.length > 0 ? photos.length : 1;
+        const amenityList = parseAmenities(room);
 
         return `
           <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col justify-between ${!isAvail ? 'opacity-70' : ''}">
@@ -660,15 +670,26 @@
                   !isAvail ? 'bg-rose-600 text-white' :
                   inv.available <= 2 ? 'bg-amber-400 text-slate-950' : 'bg-emerald-500 text-slate-950'
                 }">
-                  ${!isAvail ? 'Sold Out' : `${inv.available} Room${inv.available > 1 ? 's' : ''} Available`}
+                  ${!isAvail ? 'Sold Out Online' : `${inv.available} Room${inv.available > 1 ? 's' : ''} Left Online`}
                 </span>
                 <span class="absolute bottom-2.5 right-2.5 px-2.5 py-1 rounded-lg bg-slate-900/80 text-white text-[11px] font-semibold">
                   View Photos (${photoCount})
                 </span>
               </div>
-              <div class="p-4">
-                <h3 class="font-bold text-base text-slate-900">${room.room_type}</h3>
-                <p class="text-xs text-slate-500 mt-0.5">Up to ${room.max_guests || 2} Guests • Free Wi-Fi • Direct Rate</p>
+              <div class="p-4 space-y-2.5">
+                <div>
+                  <h3 class="font-bold text-base text-slate-900">${room.room_type}</h3>
+                  <p class="text-xs text-slate-500 mt-0.5">Up to ${room.max_guests || 2} Guests • Selected Dates: ${ci} to ${co}</p>
+                </div>
+
+                <!-- Room Inclusions & Highlights Tags -->
+                <div class="flex flex-wrap gap-1.5">
+                  ${amenityList.map(tag => `
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-medium">
+                      &#10003; ${tag}
+                    </span>
+                  `).join("")}
+                </div>
               </div>
             </div>
             <div class="px-4 pb-4 pt-2 border-t border-slate-100 flex items-center justify-between">
@@ -684,7 +705,7 @@
         `;
       }).join("");
 
-      document.getElementById("guest-room-count").textContent = `${totalAvailableAcrossHotel} rooms available across ${hotelRooms.length} categories`;
+      document.getElementById("guest-room-count").textContent = `${totalAvailableOnline} rooms open online for ${ci}`;
     }
 
     // GALLERY LIGHTBOX
@@ -725,7 +746,7 @@
       renderGallerySlide();
     }
 
-    // GUEST BOOKING MODAL WITH SMART MMQR / WALLET SELECTOR
+    // GUEST BOOKING MODAL
     function openBookingModal(roomId) {
       selectedRoomForBooking = hotelRooms.find(r => r.id === roomId);
       if (!selectedRoomForBooking) return;
@@ -738,7 +759,6 @@
       document.getElementById("mb-dates-summary").textContent = `${ci} to ${co} (${nights} night${nights > 1 ? 's' : ''})`;
       document.getElementById("mb-total-price").textContent = `${total.toLocaleString()} MMK`;
 
-      // Build payment options dynamically based on what the hotel configured
       const paySelect = document.getElementById("mb-payment");
       const options = [];
       if (currentHotel.mmqr_url) {
@@ -878,7 +898,6 @@
       document.getElementById("admin-pin-gate").classList.add("hidden");
       document.getElementById("admin-workspace").classList.remove("hidden");
 
-      // Show role badge in header and unlock Owner Settings tab only for Owner
       const badge = document.getElementById("nav-role-badge");
       badge.classList.remove("hidden");
       if (loggedInRole === "owner") {
@@ -905,7 +924,6 @@
       });
     }
 
-    // 1-CLICK EXCEL (CSV) DOWNLOAD FOR HOTEL STAFF & OWNERS
     function exportBookingsToExcel() {
       if (!hotelBookings || hotelBookings.length === 0) {
         return alert("No bookings available to export yet.");
@@ -939,7 +957,6 @@
         b.created_at ? new Date(b.created_at).toLocaleString() : ""
       ].map(escapeCsv).join(","));
 
-      // Add UTF-8 BOM (\uFEFF) so Excel opens Myanmar Unicode text cleanly
       const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\n");
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
@@ -979,7 +996,6 @@
       document.getElementById("kpi-pending").textContent = pendingCount;
       document.getElementById("kpi-available").textContent = `${availToday} / ${totalAllocated}`;
 
-      // Populate Owner Settings fields
       const baseUrl = window.location.origin + window.location.pathname;
       document.getElementById("share-guest-url").textContent = `${baseUrl}?hotel=${currentHotel.slug}`;
       document.getElementById("share-admin-url").textContent = `${baseUrl}?hotel=${currentHotel.slug}&view=admin`;
@@ -1039,12 +1055,13 @@
         `).join("");
       }
 
-      // Admin Room Types Grid
+      // Admin Room Types Grid with Quick -1 / +1 Online Quota Controls & Inclusions Editor
       const rGrid = document.getElementById("admin-rooms-grid");
       rGrid.innerHTML = hotelRooms.map(r => {
         const photos = getRoomPhotos(r);
         const canAddMore = photos.length < MAX_ROOM_PHOTOS;
         const inv = getCategoryInventoryForDates(r, todayStr, tomorrowStr);
+        const amenityText = r.amenities || "Free Wi-Fi, Non-Smoking, Direct Rate";
 
         return `
           <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs flex flex-col justify-between">
@@ -1084,27 +1101,39 @@
                 <div>
                   <div class="font-bold text-sm text-slate-900">${r.room_type}</div>
                   <div class="text-xs font-semibold text-emerald-700">${Number(r.price_mmk).toLocaleString()} MMK / night</div>
+                  <div class="text-[11px] text-slate-500 mt-1 line-clamp-2">${amenityText}</div>
                 </div>
 
-                <div class="grid grid-cols-3 gap-1.5 bg-slate-50 border border-slate-200 rounded-lg p-2 text-center">
-                  <div>
-                    <div class="text-[10px] text-slate-500 font-semibold uppercase">Allocated</div>
-                    <div class="text-sm font-extrabold text-slate-900">${inv.total}</div>
+                <!-- Quick -1 / +1 Online Quota Adjuster -->
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-2.5 space-y-2">
+                  <div class="grid grid-cols-3 gap-1 text-center">
+                    <div>
+                      <div class="text-[10px] text-slate-500 font-semibold uppercase">Online Quota</div>
+                      <div class="text-sm font-extrabold text-slate-900">${inv.total}</div>
+                    </div>
+                    <div class="border-x border-slate-200">
+                      <div class="text-[10px] text-amber-600 font-semibold uppercase">Booked</div>
+                      <div class="text-sm font-extrabold text-amber-700">${inv.booked}</div>
+                    </div>
+                    <div>
+                      <div class="text-[10px] text-emerald-600 font-semibold uppercase">Left Online</div>
+                      <div class="text-sm font-extrabold text-emerald-700">${inv.available}</div>
+                    </div>
                   </div>
-                  <div class="border-x border-slate-200">
-                    <div class="text-[10px] text-amber-600 font-semibold uppercase">Booked</div>
-                    <div class="text-sm font-extrabold text-amber-700">${inv.booked}</div>
-                  </div>
-                  <div>
-                    <div class="text-[10px] text-emerald-600 font-semibold uppercase">Available</div>
-                    <div class="text-sm font-extrabold text-emerald-700">${inv.available}</div>
+
+                  <div class="flex items-center justify-between pt-1.5 border-t border-slate-200">
+                    <span class="text-[11px] font-semibold text-slate-600">Quick Quota Adjust:</span>
+                    <div class="flex items-center gap-1.5">
+                      <button onclick="adjustQuotaByDelta('${r.id}', ${inv.total}, -1)" class="w-7 h-7 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-800 font-extrabold text-xs">-1</button>
+                      <button onclick="adjustQuotaByDelta('${r.id}', ${inv.total}, 1)" class="w-7 h-7 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-extrabold text-xs">+1</button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
             <div class="px-3.5 pb-3.5 flex flex-wrap gap-1.5">
-              <button onclick="promptUpdateTotalRooms('${r.id}', ${inv.total})" class="flex-1 px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold">Edit Quota (${inv.total})</button>
+              <button onclick="promptUpdateAmenities('${r.id}', \`${amenityText.replace(/`/g, "")}\`)" class="flex-1 px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold">Edit Inclusions</button>
               <button onclick="promptUpdatePrice('${r.id}', ${r.price_mmk})" class="flex-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold">Edit Rate</button>
               <button onclick="toggleBlockCategory('${r.id}', '${r.status}')" class="w-full px-2.5 py-1 rounded-lg text-[11px] font-semibold border ${r.status === 'Blocked' ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}">
                 ${r.status === 'Blocked' ? 'Sold Out / Closed (Click to Reopen)' : 'Open for Online Booking'}
@@ -1113,6 +1142,19 @@
           </div>
         `;
       }).join("");
+    }
+
+    async function adjustQuotaByDelta(roomId, currentTotal, delta) {
+      const nextTotal = Math.max(0, currentTotal + delta);
+      await sbFetch(`rooms?id=eq.${roomId}`, { method: "PATCH", body: JSON.stringify({ total_rooms: nextTotal }) });
+      await refreshHotelData();
+    }
+
+    async function promptUpdateAmenities(roomId, oldAmenities) {
+      const val = prompt("Edit room inclusions & highlights (comma-separated):", oldAmenities);
+      if (val === null) return;
+      await sbFetch(`rooms?id=eq.${roomId}`, { method: "PATCH", body: JSON.stringify({ amenities: val.trim() }) });
+      await refreshHotelData();
     }
 
     async function uploadHotelMmqr(file) {
@@ -1189,13 +1231,6 @@
       await refreshHotelData();
     }
 
-    async function promptUpdateTotalRooms(roomId, oldTotal) {
-      const val = prompt("Number of rooms allocated for online booking:", oldTotal);
-      if (!val || isNaN(val) || parseInt(val, 10) < 1) return;
-      await sbFetch(`rooms?id=eq.${roomId}`, { method: "PATCH", body: JSON.stringify({ total_rooms: parseInt(val, 10) }) });
-      await refreshHotelData();
-    }
-
     async function promptUpdatePrice(roomId, oldPrice) {
       const val = prompt("Enter new nightly rate (MMK):", oldPrice);
       if (!val || isNaN(val)) return;
@@ -1214,6 +1249,7 @@
       const totalRooms = parseInt(document.getElementById("new-room-total").value, 10) || 1;
       const price = parseInt(document.getElementById("new-room-price").value, 10);
       const maxGuests = parseInt(document.getElementById("new-room-guests").value, 10) || 2;
+      const amenities = document.getElementById("new-room-amenities").value.trim() || "Free Wi-Fi, Non-Smoking";
       const files = Array.from(document.getElementById("new-room-photo").files || []).slice(0, MAX_ROOM_PHOTOS);
       if (!type || !price) return alert("Enter room category name and nightly rate.");
 
@@ -1236,13 +1272,14 @@
             total_rooms: totalRooms,
             max_guests: maxGuests,
             price_mmk: price,
+            amenities: amenities,
             image_url: uploadedUrls[0] || null,
             gallery_urls: uploadedUrls,
             status: "Available"
           })
         });
         document.getElementById("new-room-type").value = "";
-        document.getElementById("new-room-total").value = "5";
+        document.getElementById("new-room-total").value = "3";
         document.getElementById("new-room-price").value = "";
         document.getElementById("new-room-photo").value = "";
         await refreshHotelData();
@@ -1369,6 +1406,7 @@
       const type = document.getElementById("sa-room-type").value.trim();
       const totalRooms = parseInt(document.getElementById("sa-room-total").value, 10) || 1;
       const price = parseInt(document.getElementById("sa-room-price").value, 10);
+      const amenities = document.getElementById("sa-room-amenities").value.trim() || "Free Wi-Fi, Non-Smoking";
       const files = Array.from(document.getElementById("sa-room-photo").files || []).slice(0, MAX_ROOM_PHOTOS);
 
       if (!hotelId || !type || !price) return alert("Fill in hotel, room type, quota, and rate.");
@@ -1391,6 +1429,7 @@
             room_type: type,
             total_rooms: totalRooms,
             price_mmk: price,
+            amenities: amenities,
             image_url: uploadedUrls[0] || null,
             gallery_urls: uploadedUrls,
             status: "Available"
@@ -1398,10 +1437,10 @@
         });
 
         document.getElementById("sa-room-type").value = "";
-        document.getElementById("sa-room-total").value = "5";
+        document.getElementById("sa-room-total").value = "3";
         document.getElementById("sa-room-price").value = "";
         document.getElementById("sa-room-photo").value = "";
-        alert(`Room category (${totalRooms} rooms) and ${uploadedUrls.length} photo(s) saved!`);
+        alert(`Room category (${totalRooms} rooms online) and ${uploadedUrls.length} photo(s) saved!`);
       } catch (e) {
         alert("Error: " + e.message);
       } finally {
