@@ -13,7 +13,7 @@
 </head>
 <body class="text-slate-800 antialiased min-h-screen flex flex-col">
 
-  <!-- TOP NAVIGATION BAR (ULTRA-CLEAN) -->
+  <!-- TOP NAVIGATION BAR -->
   <header class="bg-slate-900 text-white sticky top-0 z-40 shadow-md">
     <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2.5">
@@ -25,6 +25,7 @@
       </div>
 
       <div class="flex items-center gap-2" id="nav-right-actions">
+        <span id="nav-role-badge" class="hidden px-2.5 py-1 rounded-full text-[11px] font-bold"></span>
         <a id="nav-btn-back-guest" href="#" class="hidden px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 text-slate-950 transition">
           View Guest Booking Page
         </a>
@@ -58,9 +59,8 @@
           Official Hotel Direct Rate • No Middleman Fees
         </span>
         <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2" id="hero-hotel-name">Welcome</h1>
-        <p class="text-sm text-slate-300 max-w-2xl" id="hero-hotel-sub">Reserve your room directly with instant confirmation via KBZPay, WavePay, or at check-in.</p>
+        <p class="text-sm text-slate-300 max-w-2xl" id="hero-hotel-sub">Reserve your room directly with instant confirmation via MMQR, mobile wallet, or at check-in.</p>
 
-        <!-- Clean 3-Column Date Selector -->
         <div class="mt-6 bg-white/10 backdrop-blur-sm border border-white/15 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label class="block text-[11px] uppercase tracking-wider text-slate-300 font-semibold mb-1">Check-In Date</label>
@@ -88,21 +88,22 @@
     </section>
 
     <!-- ========================================================= -->
-    <!-- 2. HOTEL DIRECT BOOKING INBOX (?view=admin)               -->
+    <!-- 2. HOTEL OWNER & STAFF DASHBOARD (?view=admin)            -->
     <!-- ========================================================= -->
     <section id="view-admin" class="hidden fade-in space-y-6">
+      <!-- Role-Aware PIN Login -->
       <div id="admin-pin-gate" class="max-w-sm mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-center my-8">
         <div class="w-11 h-11 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center mx-auto mb-3 font-bold">PIN</div>
-        <h2 class="text-lg font-bold text-slate-900">Hotel Direct Booking Inbox</h2>
-        <p class="text-xs text-slate-500 mt-1 mb-4">Enter your hotel's PIN to verify incoming bookings & manage online room allocation</p>
-        <input type="password" id="admin-pin-input" placeholder="Enter PIN" maxlength="8" class="w-full text-center tracking-widest text-lg font-bold px-4 py-2.5 border border-slate-300 rounded-xl mb-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none" onkeydown="if(event.key==='Enter') verifyAdminPin()" />
+        <h2 class="text-lg font-bold text-slate-900">Hotel Portal Access</h2>
+        <p class="text-xs text-slate-500 mt-1 mb-4">Enter your <b>Staff PIN</b> (bookings & rooms) or <b>Owner PIN</b> (full access + payment & MMQR settings)</p>
+        <input type="password" id="admin-pin-input" placeholder="Enter Staff or Owner PIN" maxlength="8" class="w-full text-center tracking-widest text-lg font-bold px-4 py-2.5 border border-slate-300 rounded-xl mb-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none" onkeydown="if(event.key==='Enter') verifyAdminPin()" />
         <button onclick="verifyAdminPin()" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-sm transition">
-          Unlock Booking Inbox
+          Unlock Portal
         </button>
       </div>
 
       <div id="admin-workspace" class="hidden space-y-6">
-        <!-- KPI Cards Focused on Direct Bookings & Commission Saved -->
+        <!-- KPI Cards -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
             <div class="text-xs font-medium text-slate-500">Confirmed Direct Bookings</div>
@@ -122,13 +123,17 @@
           </div>
         </div>
 
-        <!-- Sub-Navigation Tabs -->
+        <!-- Navigation Tabs + Excel Download -->
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
-          <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2">
             <button onclick="switchAdminTab('bookings')" id="tab-admin-bookings" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-slate-900 text-white">Incoming Bookings & Slips</button>
             <button onclick="switchAdminTab('rooms')" id="tab-admin-rooms" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-white text-slate-600 border border-slate-200">Online Room Allocation & Rates</button>
-            <button onclick="switchAdminTab('settings')" id="tab-admin-settings" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-white text-slate-600 border border-slate-200">Payment & Share Link</button>
+            <button onclick="switchAdminTab('settings')" id="tab-admin-settings" class="hidden px-3.5 py-2 rounded-lg text-xs font-bold bg-white text-slate-600 border border-slate-200">Owner Settings (MMQR & PINs)</button>
           </div>
+
+          <button onclick="exportBookingsToExcel()" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-1.5">
+            <span>&#8681;</span> Download Excel (CSV)
+          </button>
         </div>
 
         <!-- TAB 1: INCOMING BOOKINGS & SLIPS -->
@@ -179,39 +184,78 @@
           <div id="admin-rooms-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
         </div>
 
-        <!-- TAB 3: SETTINGS & LINKS -->
-        <div id="admin-panel-settings" class="hidden bg-white p-6 rounded-2xl border border-slate-200 max-w-2xl space-y-4">
-          <h3 class="font-bold text-base text-slate-900">Payment Accounts & Direct Booking Link</h3>
+        <!-- TAB 3: OWNER-ONLY SETTINGS (MMQR, WALLETS & ROLE PINs) -->
+        <div id="admin-panel-settings" class="hidden bg-white p-6 rounded-2xl border border-slate-200 max-w-2xl space-y-5">
+          <div class="flex items-center justify-between border-b pb-3">
+            <div>
+              <h3 class="font-bold text-base text-slate-900">Owner Settings – Payment, MMQR & Access PINs</h3>
+              <p class="text-xs text-slate-500">Only visible when logged in with the Hotel Owner PIN.</p>
+            </div>
+            <span class="px-2.5 py-1 bg-indigo-100 text-indigo-800 text-[11px] font-bold rounded-full">OWNER ONLY</span>
+          </div>
+
+          <!-- Share Links -->
           <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs space-y-2">
             <div>
               <div class="font-bold text-emerald-900">1. Guest Direct Booking Link (Paste in Facebook "Book Now" & Viber):</div>
               <div class="font-mono text-emerald-800 break-all select-all" id="share-guest-url"></div>
             </div>
             <div class="pt-1 border-t border-emerald-200">
-              <div class="font-bold text-slate-800">2. Reservation Team Inbox Link (Bookmark for Staff):</div>
+              <div class="font-bold text-slate-800">2. Staff & Owner Login Link (Use Staff PIN or Owner PIN):</div>
               <div class="font-mono text-slate-700 break-all select-all" id="share-admin-url"></div>
             </div>
           </div>
+
+          <!-- MMQR Upload Box -->
+          <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <h4 class="font-bold text-sm text-slate-900">Official Hotel MMQR Code (Recommended)</h4>
+                <p class="text-xs text-slate-500 mt-0.5">Upload your bank/merchant MMQR image so guests can scan with any Myanmar bank or wallet—no need to show individual phone numbers.</p>
+              </div>
+              <button onclick="removeHotelMmqr()" id="btn-remove-mmqr" class="hidden px-2.5 py-1 bg-rose-100 text-rose-700 text-xs font-bold rounded-lg">Remove QR</button>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-4">
+              <div id="owner-mmqr-preview-box" class="hidden w-28 h-28 rounded-xl border border-slate-300 bg-white p-1.5 flex items-center justify-center">
+                <img id="owner-mmqr-img" src="" alt="Hotel MMQR" class="max-w-full max-h-full object-contain" />
+              </div>
+              <div class="space-y-1.5">
+                <label class="inline-block px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg cursor-pointer">
+                  Upload / Change MMQR Image
+                  <input type="file" accept="image/*" class="hidden" onchange="uploadHotelMmqr(this.files[0])" />
+                </label>
+                <div class="text-[11px] text-slate-400">PNG or JPG screenshot of your official MMQR</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Optional Individual Numbers & Role PINs -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Hotel Phone / Viber</label>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">KBZPay Number (Leave blank to hide)</label>
+              <input type="text" id="set-kbz" placeholder="Optional" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">WavePay Number (Leave blank to hide)</label>
+              <input type="text" id="set-wave" placeholder="Optional" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Hotel Contact Phone / Viber</label>
               <input type="text" id="set-phone" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Team Inbox PIN</label>
-              <input type="text" id="set-pin" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Front-Desk Staff PIN (Limited Access)</label>
+              <input type="text" id="set-staff-pin" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono" />
             </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">KBZPay Receiving Number</label>
-              <input type="text" id="set-kbz" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">WavePay Receiving Number</label>
-              <input type="text" id="set-wave" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-semibold text-indigo-700 mb-1">Hotel Owner PIN (Full Access + Payment/MMQR Settings)</label>
+              <input type="text" id="set-owner-pin" class="w-full px-3 py-2 border border-indigo-300 bg-indigo-50/40 rounded-lg text-sm font-mono font-bold" />
             </div>
           </div>
+
           <button onclick="saveHotelSettings()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl">
-            Save Settings
+            Save Owner Settings
           </button>
         </div>
       </div>
@@ -224,7 +268,7 @@
       <div id="super-login-box" class="max-w-sm mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-center my-8">
         <span class="px-2.5 py-1 bg-indigo-100 text-indigo-700 text-[11px] font-bold rounded-full">PLATFORM OWNER</span>
         <h2 class="text-lg font-bold text-slate-900 mt-2">Master Super-Admin</h2>
-        <p class="text-xs text-slate-500 mt-1 mb-4">Onboard new hotels, configure room types & manage licenses</p>
+        <p class="text-xs text-slate-500 mt-1 mb-4">Onboard new hotels, configure MMQR & room types, and manage licenses</p>
         <input type="password" id="super-pass-input" placeholder="Master Password" class="w-full text-center px-4 py-2.5 border border-slate-300 rounded-xl mb-3 text-sm" onkeydown="if(event.key==='Enter') unlockSuperAdmin()" />
         <button onclick="unlockSuperAdmin()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm">
           Access Super-Admin
@@ -235,12 +279,13 @@
         <div class="flex items-center justify-between">
           <div>
             <h1 class="text-xl font-extrabold text-slate-900">StayDirect Myanmar – Master Control</h1>
-            <p class="text-xs text-slate-500">Create client direct-booking pages, add room categories, and manage annual licenses.</p>
+            <p class="text-xs text-slate-500">Create client direct-booking pages, upload MMQR codes & room categories, and manage licenses.</p>
           </div>
           <span class="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full" id="super-hotel-count">0 Hotels</span>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Column 1: Onboard New Hotel -->
           <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             <h3 class="font-bold text-sm text-slate-900 border-b pb-2">1. Onboard New Hotel Client</h3>
             <div>
@@ -255,21 +300,30 @@
               <label class="block text-xs font-semibold text-slate-600 mb-1">Township / City</label>
               <input type="text" id="sa-loc" placeholder="e.g. Kalaw, Shan State" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
             </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Upload Hotel MMQR Image (Optional)</label>
+              <input type="file" id="sa-mmqr-file" accept="image/*" class="w-full text-xs text-slate-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">KBZPay No. (Leave blank if using MMQR only)</label>
+              <input type="text" id="sa-kbz" placeholder="Optional" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+            </div>
             <div class="grid grid-cols-2 gap-2">
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">KBZPay No.</label>
-                <input type="text" id="sa-kbz" placeholder="09..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Staff PIN</label>
+                <input type="text" id="sa-staff-pin" value="1234" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono" />
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">Inbox PIN</label>
-                <input type="text" id="sa-pin" value="1234" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+                <label class="block text-xs font-semibold text-indigo-700 mb-1">Owner PIN</label>
+                <input type="text" id="sa-owner-pin" value="9999" class="w-full px-3 py-2 border border-indigo-300 rounded-lg text-sm font-mono" />
               </div>
             </div>
-            <button onclick="superCreateHotel()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl">
+            <button onclick="superCreateHotel()" id="sa-create-hotel-btn" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl">
               + Create Live Booking Page
             </button>
           </div>
 
+          <!-- Column 2: Add Room Category -->
           <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             <h3 class="font-bold text-sm text-slate-900 border-b pb-2">2. Add Room Category & Photos</h3>
             <div>
@@ -299,9 +353,10 @@
             </button>
           </div>
 
+          <!-- Column 3: Client Hotels List -->
           <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             <h3 class="font-bold text-sm text-slate-900 border-b pb-2">3. Client Hotels & Licenses</h3>
-            <div id="sa-hotels-list" class="space-y-3 max-h-[420px] overflow-y-auto pr-1"></div>
+            <div id="sa-hotels-list" class="space-y-3 max-h-[450px] overflow-y-auto pr-1"></div>
           </div>
         </div>
       </div>
@@ -330,7 +385,7 @@
     </div>
   </div>
 
-  <!-- GUEST BOOKING MODAL -->
+  <!-- GUEST BOOKING MODAL (WITH MMQR DISPLAY) -->
   <div id="modal-book" class="hidden fixed inset-0 bg-slate-950/60 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between border-b pb-3">
@@ -352,17 +407,27 @@
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">Payment Method</label>
-          <select id="mb-payment" onchange="toggleSlipBox()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
-            <option value="KBZPay">KBZPay Transfer</option>
-            <option value="WavePay">WavePay Transfer</option>
-            <option value="Pay at Check-In">Pay at Check-In (Cash/Card)</option>
-          </select>
+          <select id="mb-payment" onchange="toggleSlipBox()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"></select>
         </div>
 
-        <div id="mb-wallet-info" class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-2">
-          <div class="font-semibold text-slate-700">Transfer Deposit to Hotel Account:</div>
-          <div class="font-mono font-bold text-emerald-700 text-sm" id="mb-wallet-number"></div>
-          <div>
+        <!-- Digital Transfer Box (Shows MMQR Image OR Wallet Number) -->
+        <div id="mb-wallet-info" class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-2.5">
+          <div id="mb-mmqr-container" class="hidden text-center space-y-2">
+            <div class="font-bold text-slate-800">Scan Hotel MMQR (KBZPay, WavePay, AYA, CB, uab & all banks)</div>
+            <div class="bg-white p-2.5 rounded-xl border border-slate-200 inline-block shadow-xs">
+              <img id="mb-mmqr-img" src="" alt="Scan MMQR" class="w-48 h-48 object-contain mx-auto" />
+            </div>
+            <div>
+              <a id="mb-mmqr-download" href="#" target="_blank" download="Hotel-MMQR.png" class="inline-block text-[11px] font-bold text-emerald-700 underline">Open / Save QR Image to Gallery</a>
+            </div>
+          </div>
+
+          <div id="mb-number-container" class="hidden">
+            <div class="font-semibold text-slate-700">Transfer Deposit to Hotel Account:</div>
+            <div class="font-mono font-bold text-emerald-700 text-sm mt-0.5" id="mb-wallet-number"></div>
+          </div>
+
+          <div class="pt-1 border-t border-slate-200">
             <label class="block font-semibold text-slate-700 mb-1">Upload Payment Slip Screenshot *</label>
             <input type="file" id="mb-slip-file" accept="image/*" class="w-full text-xs text-slate-600" />
           </div>
@@ -380,7 +445,7 @@
     </div>
   </div>
 
-  <!-- INSTANT BOOKING RECEIPT POPUP (SHOWN RIGHT AFTER BOOKING) -->
+  <!-- INSTANT BOOKING RECEIPT POPUP -->
   <div id="modal-receipt" class="hidden fixed inset-0 bg-slate-950/60 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4 text-center">
       <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-2xl font-extrabold">&#10003;</div>
@@ -396,7 +461,7 @@
   </div>
 
   <!-- ========================================================= -->
-  <!-- ZERO-CDN DIRECT SUPABASE REST + DIRECT BOOKING ENGINE     -->
+  <!-- JAVASCRIPT LOGIC: MMQR + CSV EXPORT + OWNER/STAFF ROLES   -->
   <!-- ========================================================= -->
   <script>
     const SUPABASE_URL = "https://xrwqbdjvuztjgkknsank.supabase.co";
@@ -444,6 +509,7 @@
     let hotelRooms = [];
     let hotelBookings = [];
     let selectedRoomForBooking = null;
+    let loggedInRole = null; // 'owner' or 'staff'
 
     let activeGalleryPhotos = [];
     let activeGalleryIndex = 0;
@@ -460,7 +526,6 @@
       return arr.slice(0, MAX_ROOM_PHOTOS);
     }
 
-    // INVENTORY CALCULATION BY ROOM TYPE & DATE RANGE
     function getCategoryInventoryForDates(room, checkInStr, checkOutStr) {
       const total = Number(room.total_rooms) || 1;
       if (room.status === "Blocked") {
@@ -531,7 +596,7 @@
         document.getElementById("nav-hotel-name").textContent = hotel.name;
         document.getElementById("nav-hotel-location").textContent = hotel.location || "Myanmar";
         document.getElementById("hero-hotel-name").textContent = hotel.name;
-        document.getElementById("hero-hotel-sub").textContent = `${hotel.location || ''} • Official Direct Booking (${hotel.phone || ''})`;
+        document.getElementById("hero-hotel-sub").textContent = `${hotel.location || ''} • Official Direct Booking${hotel.phone ? ' (' + hotel.phone + ')' : ''}`;
 
         await refreshHotelData();
 
@@ -660,7 +725,7 @@
       renderGallerySlide();
     }
 
-    // GUEST BOOKING & INSTANT RECEIPT
+    // GUEST BOOKING MODAL WITH SMART MMQR / WALLET SELECTOR
     function openBookingModal(roomId) {
       selectedRoomForBooking = hotelRooms.find(r => r.id === roomId);
       if (!selectedRoomForBooking) return;
@@ -672,6 +737,22 @@
       document.getElementById("mb-room-title").textContent = selectedRoomForBooking.room_type;
       document.getElementById("mb-dates-summary").textContent = `${ci} to ${co} (${nights} night${nights > 1 ? 's' : ''})`;
       document.getElementById("mb-total-price").textContent = `${total.toLocaleString()} MMK`;
+
+      // Build payment options dynamically based on what the hotel configured
+      const paySelect = document.getElementById("mb-payment");
+      const options = [];
+      if (currentHotel.mmqr_url) {
+        options.push(`<option value="MMQR">MMQR Scan (All Banks & Mobile Wallets)</option>`);
+      }
+      if (currentHotel.kbzpay_number) {
+        options.push(`<option value="KBZPay">KBZPay Transfer</option>`);
+      }
+      if (currentHotel.wavepay_number) {
+        options.push(`<option value="WavePay">WavePay Transfer</option>`);
+      }
+      options.push(`<option value="Pay at Check-In">Pay at Check-In (Cash/Card)</option>`);
+      paySelect.innerHTML = options.join("");
+
       toggleSlipBox();
       document.getElementById("modal-book").classList.remove("hidden");
     }
@@ -679,13 +760,26 @@
     function toggleSlipBox() {
       const method = document.getElementById("mb-payment").value;
       const box = document.getElementById("mb-wallet-info");
+      const mmqrBox = document.getElementById("mb-mmqr-container");
+      const numBox = document.getElementById("mb-number-container");
       const numEl = document.getElementById("mb-wallet-number");
+
       if (method === "Pay at Check-In") {
         box.classList.add("hidden");
+        return;
+      }
+
+      box.classList.remove("hidden");
+      if (method === "MMQR") {
+        mmqrBox.classList.remove("hidden");
+        numBox.classList.add("hidden");
+        document.getElementById("mb-mmqr-img").src = currentHotel.mmqr_url;
+        document.getElementById("mb-mmqr-download").href = currentHotel.mmqr_url;
       } else {
-        box.classList.remove("hidden");
-        const num = method === "KBZPay" ? (currentHotel.kbzpay_number || currentHotel.phone) : (currentHotel.wavepay_number || currentHotel.phone);
-        numEl.textContent = `${method}: ${num || 'Contact Hotel'}`;
+        mmqrBox.classList.add("hidden");
+        numBox.classList.remove("hidden");
+        const num = method === "KBZPay" ? currentHotel.kbzpay_number : currentHotel.wavepay_number;
+        numEl.textContent = `${method}: ${num}`;
       }
     }
 
@@ -697,7 +791,7 @@
 
       if (!name || !phone) return alert("Please enter your name and phone number.");
       if (method !== "Pay at Check-In" && !slipInput.files[0]) {
-        return alert("Please upload your KBZPay/WavePay transfer screenshot.");
+        return alert("Please upload your payment receipt screenshot.");
       }
 
       const ci = document.getElementById("guest-checkin").value;
@@ -745,7 +839,6 @@
 
         await refreshHotelData();
 
-        // Show clean instant confirmation receipt
         document.getElementById("receipt-details").innerHTML = `
           <div class="flex justify-between font-bold text-emerald-950 text-sm border-b border-emerald-200 pb-1.5">
             <span>Ref: ${refCode}</span>
@@ -767,26 +860,97 @@
     }
 
     // =========================================================
-    // HOTEL DIRECT BOOKING INBOX (?view=admin)
+    // HOTEL OWNER & STAFF PORTAL (?view=admin)
     // =========================================================
     function verifyAdminPin() {
       const entered = document.getElementById("admin-pin-input").value.trim();
-      if (entered === (currentHotel.admin_pin || "1234")) {
-        document.getElementById("admin-pin-gate").classList.add("hidden");
-        document.getElementById("admin-workspace").classList.remove("hidden");
-        renderAdminDashboard();
+      const staffPin = currentHotel.admin_pin || "1234";
+      const ownerPin = currentHotel.owner_pin || "9999";
+
+      if (entered === ownerPin) {
+        loggedInRole = "owner";
+      } else if (entered === staffPin) {
+        loggedInRole = "staff";
       } else {
-        alert("Incorrect PIN.");
+        return alert("Incorrect Staff or Owner PIN.");
       }
+
+      document.getElementById("admin-pin-gate").classList.add("hidden");
+      document.getElementById("admin-workspace").classList.remove("hidden");
+
+      // Show role badge in header and unlock Owner Settings tab only for Owner
+      const badge = document.getElementById("nav-role-badge");
+      badge.classList.remove("hidden");
+      if (loggedInRole === "owner") {
+        badge.textContent = "OWNER ACCESS";
+        badge.className = "px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-500 text-white";
+        document.getElementById("tab-admin-settings").classList.remove("hidden");
+      } else {
+        badge.textContent = "STAFF ACCESS";
+        badge.className = "px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-700 text-emerald-300";
+        document.getElementById("tab-admin-settings").classList.add("hidden");
+      }
+
+      renderAdminDashboard();
     }
 
     function switchAdminTab(tab) {
+      if (tab === "settings" && loggedInRole !== "owner") return;
       ["bookings", "rooms", "settings"].forEach(t => {
         document.getElementById(`admin-panel-${t}`).classList.toggle("hidden", t !== tab);
-        document.getElementById(`tab-admin-${t}`).className = t === tab
-          ? "px-3.5 py-2 rounded-lg text-xs font-bold bg-slate-900 text-white"
-          : "px-3.5 py-2 rounded-lg text-xs font-bold bg-white text-slate-600 border border-slate-200";
+        const btn = document.getElementById(`tab-admin-${t}`);
+        if (btn) {
+          btn.className = (t === tab ? "px-3.5 py-2 rounded-lg text-xs font-bold bg-slate-900 text-white" : "px-3.5 py-2 rounded-lg text-xs font-bold bg-white text-slate-600 border border-slate-200") + (t === "settings" && loggedInRole !== "owner" ? " hidden" : "");
+        }
       });
+    }
+
+    // 1-CLICK EXCEL (CSV) DOWNLOAD FOR HOTEL STAFF & OWNERS
+    function exportBookingsToExcel() {
+      if (!hotelBookings || hotelBookings.length === 0) {
+        return alert("No bookings available to export yet.");
+      }
+      const headers = [
+        "Booking Reference",
+        "Guest Name",
+        "Guest Phone",
+        "Room Category",
+        "Check-In Date",
+        "Check-Out Date",
+        "Total Amount (MMK)",
+        "Payment Method",
+        "Booking Status",
+        "Payment Slip URL",
+        "Created At"
+      ];
+
+      const escapeCsv = val => `"${String(val ?? "").replace(/"/g, '""')}"`;
+      const rows = hotelBookings.map(b => [
+        b.reference_code,
+        b.guest_name,
+        b.guest_phone,
+        b.rooms?.room_type || "",
+        b.check_in,
+        b.check_out,
+        b.total_mmk,
+        b.payment_method,
+        b.status,
+        b.slip_url || "",
+        b.created_at ? new Date(b.created_at).toLocaleString() : ""
+      ].map(escapeCsv).join(","));
+
+      // Add UTF-8 BOM (\uFEFF) so Excel opens Myanmar Unicode text cleanly
+      const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const todayStr = new Date().toISOString().split("T")[0];
+      a.href = url;
+      a.download = `${currentHotel.slug}-direct-bookings-${todayStr}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
 
     function renderAdminDashboard() {
@@ -815,15 +979,26 @@
       document.getElementById("kpi-pending").textContent = pendingCount;
       document.getElementById("kpi-available").textContent = `${availToday} / ${totalAllocated}`;
 
+      // Populate Owner Settings fields
       const baseUrl = window.location.origin + window.location.pathname;
       document.getElementById("share-guest-url").textContent = `${baseUrl}?hotel=${currentHotel.slug}`;
       document.getElementById("share-admin-url").textContent = `${baseUrl}?hotel=${currentHotel.slug}&view=admin`;
       document.getElementById("set-phone").value = currentHotel.phone || "";
-      document.getElementById("set-pin").value = currentHotel.admin_pin || "1234";
+      document.getElementById("set-staff-pin").value = currentHotel.admin_pin || "1234";
+      document.getElementById("set-owner-pin").value = currentHotel.owner_pin || "9999";
       document.getElementById("set-kbz").value = currentHotel.kbzpay_number || "";
       document.getElementById("set-wave").value = currentHotel.wavepay_number || "";
 
-      // Bookings Table (Focused purely on Verify or Reject/Cancel)
+      if (currentHotel.mmqr_url) {
+        document.getElementById("owner-mmqr-preview-box").classList.remove("hidden");
+        document.getElementById("owner-mmqr-img").src = currentHotel.mmqr_url;
+        document.getElementById("btn-remove-mmqr").classList.remove("hidden");
+      } else {
+        document.getElementById("owner-mmqr-preview-box").classList.add("hidden");
+        document.getElementById("btn-remove-mmqr").classList.add("hidden");
+      }
+
+      // Bookings Table
       const tbody = document.getElementById("admin-bookings-tbody");
       if (hotelBookings.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400 text-xs">No direct bookings received yet.</td></tr>`;
@@ -864,7 +1039,7 @@
         `).join("");
       }
 
-      // Admin Room Types & Online Allocation Grid
+      // Admin Room Types Grid
       const rGrid = document.getElementById("admin-rooms-grid");
       rGrid.innerHTML = hotelRooms.map(r => {
         const photos = getRoomPhotos(r);
@@ -938,6 +1113,26 @@
           </div>
         `;
       }).join("");
+    }
+
+    async function uploadHotelMmqr(file) {
+      if (!file || loggedInRole !== "owner") return;
+      try {
+        const url = await uploadFileToBucket(file, "mmqr");
+        await sbFetch(`hotels?id=eq.${currentHotel.id}`, { method: "PATCH", body: JSON.stringify({ mmqr_url: url }) });
+        currentHotel.mmqr_url = url;
+        renderAdminDashboard();
+        alert("Hotel MMQR code uploaded!");
+      } catch (e) {
+        alert("MMQR upload error: " + e.message);
+      }
+    }
+
+    async function removeHotelMmqr() {
+      if (loggedInRole !== "owner") return;
+      await sbFetch(`hotels?id=eq.${currentHotel.id}`, { method: "PATCH", body: JSON.stringify({ mmqr_url: null }) });
+      currentHotel.mmqr_url = null;
+      renderAdminDashboard();
     }
 
     async function addMoreRoomPhotos(roomId, fileList) {
@@ -1060,16 +1255,18 @@
     }
 
     async function saveHotelSettings() {
+      if (loggedInRole !== "owner") return;
       const updates = {
         phone: document.getElementById("set-phone").value.trim(),
-        admin_pin: document.getElementById("set-pin").value.trim(),
-        kbzpay_number: document.getElementById("set-kbz").value.trim(),
-        wavepay_number: document.getElementById("set-wave").value.trim()
+        admin_pin: document.getElementById("set-staff-pin").value.trim() || "1234",
+        owner_pin: document.getElementById("set-owner-pin").value.trim() || "9999",
+        kbzpay_number: document.getElementById("set-kbz").value.trim() || null,
+        wavepay_number: document.getElementById("set-wave").value.trim() || null
       };
       try {
         await sbFetch(`hotels?id=eq.${currentHotel.id}`, { method: "PATCH", body: JSON.stringify(updates) });
         currentHotel = { ...currentHotel, ...updates };
-        alert("Hotel settings saved!");
+        alert("Owner settings saved!");
       } catch (e) {
         alert("Error saving: " + e.message);
       }
@@ -1098,7 +1295,8 @@
             <div class="flex items-center justify-between">
               <div>
                 <div class="font-bold text-sm text-slate-900">${h.name}</div>
-                <div class="text-xs text-slate-500">${h.location || ''} • PIN: <b>${h.admin_pin}</b></div>
+                <div class="text-xs text-slate-500">${h.location || ''}</div>
+                <div class="text-[11px] text-slate-600 mt-0.5">Staff PIN: <b>${h.admin_pin || '1234'}</b> • Owner PIN: <b class="text-indigo-700">${h.owner_pin || '9999'}</b></div>
               </div>
               <button onclick="superToggleHotel('${h.id}', ${!h.is_active})" class="px-2.5 py-1 rounded-full text-[11px] font-bold ${h.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
                 ${h.is_active ? 'Active' : 'Paused'}
@@ -1106,7 +1304,7 @@
             </div>
             <div class="flex gap-2 pt-1 text-[11px] font-semibold">
               <a href="${baseUrl}?hotel=${h.slug}" target="_blank" class="px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100">Guest Link</a>
-              <a href="${baseUrl}?hotel=${h.slug}&view=admin" target="_blank" class="px-2.5 py-1 bg-slate-900 text-white rounded-lg hover:bg-slate-800">Booking Inbox</a>
+              <a href="${baseUrl}?hotel=${h.slug}&view=admin" target="_blank" class="px-2.5 py-1 bg-slate-900 text-white rounded-lg hover:bg-slate-800">Staff / Owner Portal</a>
             </div>
           </div>
         `).join("");
@@ -1120,25 +1318,49 @@
       const slug = document.getElementById("sa-slug").value.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
       const loc = document.getElementById("sa-loc").value.trim();
       const kbz = document.getElementById("sa-kbz").value.trim();
-      const pin = document.getElementById("sa-pin").value.trim() || "1234";
+      const staffPin = document.getElementById("sa-staff-pin").value.trim() || "1234";
+      const ownerPin = document.getElementById("sa-owner-pin").value.trim() || "9999";
+      const mmqrFile = document.getElementById("sa-mmqr-file").files[0];
 
       if (!name || !slug) return alert("Hotel Name and URL Slug are required.");
 
+      const btn = document.getElementById("sa-create-hotel-btn");
+      btn.disabled = true;
+      btn.textContent = "Creating...";
+
       try {
+        let mmqrUrl = null;
+        if (mmqrFile) {
+          mmqrUrl = await uploadFileToBucket(mmqrFile, "mmqr");
+        }
+
         await sbFetch("hotels", {
           method: "POST",
           body: JSON.stringify({
-            name, slug, location: loc, phone: kbz, kbzpay_number: kbz, wavepay_number: kbz, admin_pin: pin, is_active: true
+            name,
+            slug,
+            location: loc,
+            phone: kbz || null,
+            kbzpay_number: kbz || null,
+            wavepay_number: kbz || null,
+            mmqr_url: mmqrUrl,
+            admin_pin: staffPin,
+            owner_pin: ownerPin,
+            is_active: true
           })
         });
         document.getElementById("sa-name").value = "";
         document.getElementById("sa-slug").value = "";
         document.getElementById("sa-loc").value = "";
         document.getElementById("sa-kbz").value = "";
+        document.getElementById("sa-mmqr-file").value = "";
         await loadSuperAdminHotels();
         alert(`Created live booking page for ${name}!`);
       } catch (e) {
         alert("Error creating hotel: " + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "+ Create Live Booking Page";
       }
     }
 
