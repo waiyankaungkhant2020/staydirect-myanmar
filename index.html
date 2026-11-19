@@ -56,10 +56,10 @@
     <section id="view-guest" class="hidden fade-in space-y-6">
       <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 text-white rounded-2xl p-6 sm:p-8 shadow-sm">
         <span class="inline-block px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full text-xs font-semibold mb-3">
-          Official Hotel Direct Rate • No Middleman Fees
+          Official Hotel Direct Rate • Overnight & Day-Use Sessions
         </span>
         <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2" id="hero-hotel-name">Welcome</h1>
-        <p class="text-sm text-slate-300 max-w-2xl" id="hero-hotel-sub">Reserve your room directly with instant confirmation via MMQR, mobile wallet, or at check-in.</p>
+        <p class="text-sm text-slate-300 max-w-2xl" id="hero-hotel-sub">Reserve overnight stays or flexible daycation/hourly sessions directly via MMQR, mobile wallet, or at check-in.</p>
 
         <div class="mt-6 bg-white/10 backdrop-blur-sm border border-white/15 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
@@ -67,7 +67,7 @@
             <input type="date" id="guest-checkin" onchange="recalcTotals()" class="w-full px-3 py-2 rounded-lg bg-white text-slate-900 text-sm font-medium focus:outline-none" />
           </div>
           <div>
-            <label class="block text-[11px] uppercase tracking-wider text-slate-300 font-semibold mb-1">Check-Out Date</label>
+            <label class="block text-[11px] uppercase tracking-wider text-slate-300 font-semibold mb-1">Check-Out Date (Overnight)</label>
             <input type="date" id="guest-checkout" onchange="recalcTotals()" class="w-full px-3 py-2 rounded-lg bg-white text-slate-900 text-sm font-medium focus:outline-none" />
           </div>
           <div class="flex flex-col justify-end">
@@ -159,7 +159,7 @@
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
           <div class="flex flex-wrap gap-2">
             <button onclick="switchAdminTab('bookings')" id="tab-admin-bookings" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-slate-900 text-white">Incoming Bookings & Slips</button>
-            <button onclick="switchAdminTab('rooms')" id="tab-admin-rooms" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-white text-slate-600 border border-slate-200">Online Room Quota & Inclusions</button>
+            <button onclick="switchAdminTab('rooms')" id="tab-admin-rooms" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-white text-slate-600 border border-slate-200">Online Room Quota & Session Rates</button>
             <button onclick="switchAdminTab('settings')" id="tab-admin-settings" class="hidden px-3.5 py-2 rounded-lg text-xs font-bold bg-white text-slate-600 border border-slate-200">Owner Settings (MMQR & PINs)</button>
           </div>
 
@@ -168,28 +168,70 @@
           </button>
         </div>
 
-        <!-- TAB 1: INCOMING BOOKINGS & SLIPS -->
-        <div id="admin-panel-bookings" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-              <thead>
-                <tr class="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-500">
-                  <th class="py-3 px-4">Booking Ref / Guest</th>
-                  <th class="py-3 px-4">Room Category & Dates</th>
-                  <th class="py-3 px-4">Amount & Payment</th>
-                  <th class="py-3 px-4">Status</th>
-                  <th class="py-3 px-4 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody id="admin-bookings-tbody" class="divide-y divide-slate-100 text-sm"></tbody>
-            </table>
+        <!-- TAB 1: INCOMING BOOKINGS & SLIPS (WITH FILTER BAR) -->
+        <div id="admin-panel-bookings" class="space-y-3">
+          <!-- Filter & Search Controls -->
+          <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 items-end">
+            <div class="lg:col-span-2">
+              <label class="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Search Guest / Phone / Ref</label>
+              <input type="text" id="filter-search" oninput="renderAdminDashboard()" placeholder="e.g. DIR-4821, U Kyaw, 09..." class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Status</label>
+              <select id="filter-status" onchange="renderAdminDashboard()" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white">
+                <option value="ALL">All Statuses</option>
+                <option value="Pending Verification">Pending Verification</option>
+                <option value="Confirmed">Confirmed</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Stay Type</label>
+              <select id="filter-type" onchange="renderAdminDashboard()" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white">
+                <option value="ALL">All Stay Types</option>
+                <option value="OVERNIGHT">Overnight Stay</option>
+                <option value="SESSION">Daycation / Hourly Session</option>
+              </select>
+            </div>
+            <div class="flex gap-1.5">
+              <div class="flex-1">
+                <label class="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Check-In Date</label>
+                <input type="date" id="filter-date" onchange="renderAdminDashboard()" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs bg-white" />
+              </div>
+              <div class="flex items-end">
+                <button onclick="resetBookingFilters()" title="Reset Filters" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold">
+                  Reset
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between px-1 text-xs text-slate-500">
+            <span id="filter-result-count">Showing 0 bookings</span>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-500">
+                    <th class="py-3 px-4">Booking Ref / Guest</th>
+                    <th class="py-3 px-4">Room Category & Package</th>
+                    <th class="py-3 px-4">Amount & Payment</th>
+                    <th class="py-3 px-4">Status</th>
+                    <th class="py-3 px-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-bookings-tbody" class="divide-y divide-slate-100 text-sm"></tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        <!-- TAB 2: ROOM TYPES, ONLINE QUOTA & INCLUSIONS -->
+        <!-- TAB 2: ROOM TYPES, ONLINE QUOTA & SESSION RATES -->
         <div id="admin-panel-rooms" class="hidden space-y-4">
           <div class="p-3.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900">
-            <b>Tip for Walk-Ins & Phone Calls:</b> Set your <b>Online Quota</b> to only the rooms you want to sell online (e.g., 3 or 4 rooms out of 10). If you receive a walk-in or phone booking in your front-desk system, tap <b>-1</b> on that category card to adjust online availability immediately.
+            <b>Overnight + Daycation / Hourly Sessions:</b> Add each room category with its standard <b>Overnight Rate</b>, then click <b>+ Session Rate</b> on any card to add Daycation (e.g. <i>10 AM – 6 PM</i>) or Hourly packages (e.g. <i>3 Hours</i>, <i>5 Hours</i>) on the exact same room category.
           </div>
 
           <div class="bg-white p-4 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
@@ -202,7 +244,7 @@
               <input type="number" id="new-room-total" value="3" min="1" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Direct Rate (MMK) *</label>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Overnight Rate (MMK) *</label>
               <input type="number" id="new-room-price" placeholder="95000" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
             </div>
             <div>
@@ -377,7 +419,7 @@
                 <input type="number" id="sa-room-total" value="3" min="1" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">Rate (MMK) *</label>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Overnight Rate (MMK) *</label>
                 <input type="number" id="sa-room-price" placeholder="85000" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
               </div>
             </div>
@@ -404,6 +446,38 @@
 
   </main>
 
+  <!-- SESSION RATE MANAGER MODAL (FOR HOTEL OWNER/STAFF) -->
+  <div id="modal-sessions" class="hidden fixed inset-0 bg-slate-950/60 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+      <div class="flex items-center justify-between border-b pb-3">
+        <div>
+          <h3 class="font-bold text-base text-slate-900" id="ms-room-title">Session & Daycation Rates</h3>
+          <p class="text-xs text-slate-500">Add Daycation or Hourly packages for this room category</p>
+        </div>
+        <button onclick="closeModal('modal-sessions')" class="text-slate-400 hover:text-slate-700 font-bold text-lg">&times;</button>
+      </div>
+
+      <div id="ms-sessions-list" class="space-y-2 max-h-48 overflow-y-auto"></div>
+
+      <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+        <div class="text-xs font-bold text-slate-700">Add New Session / Daycation Package</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Package Name *</label>
+            <input type="text" id="ms-label" placeholder="e.g. Daycation (10AM-6PM) or 3 Hours" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Session Price (MMK) *</label>
+            <input type="number" id="ms-price" placeholder="45000" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs" />
+          </div>
+        </div>
+        <button onclick="addSessionRateToRoom()" class="w-full py-2 bg-slate-900 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg transition">
+          + Add Session Package
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- GUEST PHOTO GALLERY LIGHTBOX MODAL -->
   <div id="modal-gallery" class="hidden fixed inset-0 bg-slate-950/85 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeModal('modal-gallery')">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-3xl w-full overflow-hidden shadow-2xl">
@@ -425,7 +499,7 @@
     </div>
   </div>
 
-  <!-- GUEST BOOKING MODAL -->
+  <!-- GUEST BOOKING MODAL (OVERNIGHT OR SESSION SELECTOR) -->
   <div id="modal-book" class="hidden fixed inset-0 bg-slate-950/60 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between border-b pb-3">
@@ -437,6 +511,18 @@
       </div>
 
       <div class="space-y-3">
+        <!-- Stay / Session Package Selector -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Select Stay / Session Option *</label>
+          <select id="mb-stay-option" onchange="onBookingOptionChange()" class="w-full px-3 py-2 border border-emerald-300 bg-emerald-50/40 rounded-lg text-sm font-semibold text-slate-900"></select>
+        </div>
+
+        <!-- Optional Arrival Time (Shown for Session / Daycation) -->
+        <div id="mb-session-time-box" class="hidden">
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Preferred Check-In Time (Session)</label>
+          <input type="time" id="mb-session-time" value="10:00" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+        </div>
+
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">Guest Full Name *</label>
           <input type="text" id="mb-name" placeholder="e.g. U Kyaw Zin" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
@@ -484,7 +570,7 @@
     </div>
   </div>
 
-  <!-- INSTANT BOOKING RECEIPT POPUP (WITH 1-TAP VIBER / CALL SHORTCUT) -->
+  <!-- INSTANT BOOKING RECEIPT POPUP -->
   <div id="modal-receipt" class="hidden fixed inset-0 bg-slate-950/60 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4 text-center">
       <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-2xl font-extrabold">&#10003;</div>
@@ -507,7 +593,7 @@
   </div>
 
   <!-- ========================================================= -->
-  <!-- JAVASCRIPT LOGIC: LIVE AUTO-REFRESH + RECEPTION BELL CHIME  -->
+  <!-- JAVASCRIPT LOGIC: BOOKING FILTERS + SESSION RATES         -->
   <!-- ========================================================= -->
   <script>
     const SUPABASE_URL = "https://xrwqbdjvuztjgkknsank.supabase.co";
@@ -555,9 +641,9 @@
     let hotelRooms = [];
     let hotelBookings = [];
     let selectedRoomForBooking = null;
+    let activeSessionRoomId = null;
     let loggedInRole = null;
 
-    // Live Auto-Refresh & Reception Bell State
     let livePollTimer = null;
     let knownBookingIds = new Set();
     let bellSoundEnabled = true;
@@ -568,36 +654,26 @@
 
     const FALLBACK_ROOM_IMG = "https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=800&q=80";
 
-    // NATIVE WEB AUDIO RECEPTION BELL CHIME (NO EXTERNAL MP3 NEEDED)
     function playReceptionBell() {
       if (!bellSoundEnabled) return;
       try {
-        if (!audioCtx) {
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (audioCtx.state === "suspended") {
-          audioCtx.resume();
-        }
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === "suspended") audioCtx.resume();
         const now = audioCtx.currentTime;
-        // Two-note hotel desk chime: E5 (659.25 Hz) -> C6 (1046.50 Hz)
         [659.25, 1046.5].forEach((freq, idx) => {
           const osc = audioCtx.createOscillator();
           const gain = audioCtx.createGain();
           osc.type = "sine";
           osc.frequency.setValueAtTime(freq, now + idx * 0.18);
-
           gain.gain.setValueAtTime(0.001, now + idx * 0.18);
           gain.gain.exponentialRampToValueAtTime(0.35, now + idx * 0.18 + 0.03);
           gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.18 + 1.1);
-
           osc.connect(gain);
           gain.connect(audioCtx.destination);
           osc.start(now + idx * 0.18);
           osc.stop(now + idx * 0.18 + 1.15);
         });
-      } catch (e) {
-        console.warn("Audio chime blocked until user interaction:", e);
-      }
+      } catch (e) {}
     }
 
     function toggleBellSound() {
@@ -614,7 +690,6 @@
     }
 
     function startLiveAutoRefresh() {
-      // Seed known booking IDs on initial unlock so existing bookings don't trigger alert
       knownBookingIds = new Set(hotelBookings.map(b => b.id));
       if (livePollTimer) clearInterval(livePollTimer);
 
@@ -623,7 +698,6 @@
         try {
           const latestBookings = await sbFetch(`bookings?hotel_id=eq.${currentHotel.id}&select=*,rooms(room_type)&order=created_at.desc`) || [];
           const newArrivals = latestBookings.filter(b => !knownBookingIds.has(b.id));
-
           latestBookings.forEach(b => knownBookingIds.add(b.id));
           hotelBookings = latestBookings;
 
@@ -635,16 +709,13 @@
             const newest = newArrivals[0];
             playReceptionBell();
             document.getElementById("banner-booking-title").textContent = `New Reservation: ${newest.reference_code} (${newest.guest_name})`;
-            document.getElementById("banner-booking-sub").textContent = `${newest.rooms?.room_type || 'Room'} • ${newest.check_in} to ${newest.check_out} • ${Number(newest.total_mmk).toLocaleString()} MMK`;
+            document.getElementById("banner-booking-sub").textContent = `${newest.rooms?.room_type || 'Room'} • ${newest.booking_option || 'Overnight Stay'} • ${Number(newest.total_mmk).toLocaleString()} MMK`;
             document.getElementById("new-booking-banner").classList.remove("hidden");
             document.title = `(${newArrivals.length} NEW) ${currentHotel.name} – Direct Bookings`;
           }
-
           renderAdminDashboard();
-        } catch (err) {
-          console.warn("Auto-sync poll skipped:", err.message);
-        }
-      }, 15000); // Checks every 15 seconds
+        } catch (err) {}
+      }, 15000);
     }
 
     function dismissNewBookingBanner() {
@@ -668,6 +739,10 @@
         arr = [room.image_url];
       }
       return arr.slice(0, MAX_ROOM_PHOTOS);
+    }
+
+    function getRoomSessions(room) {
+      return Array.isArray(room.session_rates) ? room.session_rates : [];
     }
 
     function parseAmenities(room) {
@@ -777,7 +852,7 @@
       renderAdminDashboard();
     }
 
-    // RENDER GUEST ROOM CATEGORIES
+    // RENDER GUEST ROOM CATEGORIES (SHOWING OVERNIGHT + SESSION RATES)
     function renderGuestRooms() {
       const grid = document.getElementById("guest-rooms-grid");
       const ci = document.getElementById("guest-checkin").value;
@@ -796,11 +871,12 @@
         const inv = getCategoryInventoryForDates(room, ci, co);
         totalAvailableOnline += inv.available;
         const isAvail = inv.available > 0;
-        const total = room.price_mmk * nights;
+        const overnightTotal = room.price_mmk * nights;
         const photos = getRoomPhotos(room);
         const coverImg = photos[0] || FALLBACK_ROOM_IMG;
         const photoCount = photos.length > 0 ? photos.length : 1;
         const amenityList = parseAmenities(room);
+        const sessions = getRoomSessions(room);
 
         return `
           <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col justify-between ${!isAvail ? 'opacity-70' : ''}">
@@ -820,7 +896,7 @@
               <div class="p-4 space-y-2.5">
                 <div>
                   <h3 class="font-bold text-base text-slate-900">${room.room_type}</h3>
-                  <p class="text-xs text-slate-500 mt-0.5">Up to ${room.max_guests || 2} Guests • Selected Dates: ${ci} to ${co}</p>
+                  <p class="text-xs text-slate-500 mt-0.5">Up to ${room.max_guests || 2} Guests • Selected Date: ${ci}</p>
                 </div>
 
                 <div class="flex flex-wrap gap-1.5">
@@ -830,15 +906,28 @@
                     </span>
                   `).join("")}
                 </div>
+
+                ${sessions.length > 0 ? `
+                  <div class="pt-1.5 border-t border-slate-100 space-y-1">
+                    <div class="text-[11px] font-bold text-indigo-700 uppercase tracking-wide">Daycation / Hourly Sessions Available:</div>
+                    <div class="flex flex-wrap gap-1.5">
+                      ${sessions.map(s => `
+                        <span class="px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-800 text-[11px] font-semibold">
+                          ${s.label}: ${Number(s.price_mmk).toLocaleString()} MMK
+                        </span>
+                      `).join("")}
+                    </div>
+                  </div>
+                ` : ''}
               </div>
             </div>
             <div class="px-4 pb-4 pt-2 border-t border-slate-100 flex items-center justify-between">
               <div>
-                <div class="text-xs text-slate-400">${nights} night total</div>
-                <div class="text-base font-extrabold text-slate-900">${total.toLocaleString()} MMK</div>
+                <div class="text-xs text-slate-400">${nights} night overnight</div>
+                <div class="text-base font-extrabold text-slate-900">${overnightTotal.toLocaleString()} MMK</div>
               </div>
               <button ${!isAvail ? 'disabled' : ''} onclick="openBookingModal('${room.id}')" class="px-4 py-2 rounded-xl text-xs font-bold transition ${isAvail ? 'bg-slate-900 hover:bg-emerald-600 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}">
-                ${isAvail ? 'Book Now' : 'Sold Out'}
+                ${isAvail ? (sessions.length > 0 ? 'Select Rate' : 'Book Now') : 'Sold Out'}
               </button>
             </div>
           </div>
@@ -886,18 +975,26 @@
       renderGallerySlide();
     }
 
-    // GUEST BOOKING MODAL
+    // GUEST BOOKING MODAL (SUPPORTS OVERNIGHT + SESSION RATES)
     function openBookingModal(roomId) {
       selectedRoomForBooking = hotelRooms.find(r => r.id === roomId);
       if (!selectedRoomForBooking) return;
       const ci = document.getElementById("guest-checkin").value;
       const co = document.getElementById("guest-checkout").value;
       const nights = getNights(ci, co);
-      const total = selectedRoomForBooking.price_mmk * nights;
+      const overnightTotal = selectedRoomForBooking.price_mmk * nights;
 
       document.getElementById("mb-room-title").textContent = selectedRoomForBooking.room_type;
-      document.getElementById("mb-dates-summary").textContent = `${ci} to ${co} (${nights} night${nights > 1 ? 's' : ''})`;
-      document.getElementById("mb-total-price").textContent = `${total.toLocaleString()} MMK`;
+
+      // Populate Stay / Session Package Dropdown
+      const optSelect = document.getElementById("mb-stay-option");
+      const sessions = getRoomSessions(selectedRoomForBooking);
+      let optHtml = `<option value="OVERNIGHT" data-price="${overnightTotal}" data-label="Overnight Stay (${nights} Night${nights > 1 ? 's' : ''})">Overnight Stay (${nights} Night${nights > 1 ? 's' : ''}) – ${overnightTotal.toLocaleString()} MMK</option>`;
+      sessions.forEach((s, idx) => {
+        optHtml += `<option value="SESSION_${idx}" data-price="${s.price_mmk}" data-label="${s.label}">${s.label} – ${Number(s.price_mmk).toLocaleString()} MMK</option>`;
+      });
+      optSelect.innerHTML = optHtml;
+      onBookingOptionChange();
 
       const paySelect = document.getElementById("mb-payment");
       const options = [];
@@ -915,6 +1012,23 @@
 
       toggleSlipBox();
       document.getElementById("modal-book").classList.remove("hidden");
+    }
+
+    function onBookingOptionChange() {
+      const optSelect = document.getElementById("mb-stay-option");
+      const chosen = optSelect.options[optSelect.selectedIndex];
+      const price = Number(chosen.getAttribute("data-price") || 0);
+      const isSession = optSelect.value.startsWith("SESSION_");
+
+      const ci = document.getElementById("guest-checkin").value;
+      const co = document.getElementById("guest-checkout").value;
+      const nights = getNights(ci, co);
+
+      document.getElementById("mb-session-time-box").classList.toggle("hidden", !isSession);
+      document.getElementById("mb-dates-summary").textContent = isSession
+        ? `Session Date: ${ci} (Same-Day Use)`
+        : `${ci} to ${co} (${nights} night${nights > 1 ? 's' : ''})`;
+      document.getElementById("mb-total-price").textContent = `${price.toLocaleString()} MMK`;
     }
 
     function toggleSlipBox() {
@@ -954,10 +1068,27 @@
         return alert("Please upload your payment receipt screenshot.");
       }
 
+      const optSelect = document.getElementById("mb-stay-option");
+      const chosen = optSelect.options[optSelect.selectedIndex];
+      const isSession = optSelect.value.startsWith("SESSION_");
+      const total = Number(chosen.getAttribute("data-price") || 0);
+      let optionLabel = chosen.getAttribute("data-label") || "Overnight Stay";
+      if (isSession) {
+        const arrTime = document.getElementById("mb-session-time").value || "10:00";
+        optionLabel = `${optionLabel} (Arrival: ${arrTime})`;
+      }
+
       const ci = document.getElementById("guest-checkin").value;
-      const co = document.getElementById("guest-checkout").value;
+      // For same-day session bookings, set check_out to next day so overlap date check (check_in < checkOut && check_out > checkIn) counts the room on that date
+      let co = document.getElementById("guest-checkout").value;
+      if (isSession) {
+        const nextD = new Date(ci);
+        nextD.setDate(nextD.getDate() + 1);
+        co = nextD.toISOString().split("T")[0];
+      }
+
       const inv = getCategoryInventoryForDates(selectedRoomForBooking, ci, co);
-      if (inv.available <= 0) return alert("Sorry, this room type just sold out for your selected dates.");
+      if (inv.available <= 0) return alert("Sorry, this room type just sold out for your selected date.");
 
       const btn = document.getElementById("mb-submit-btn");
       btn.disabled = true;
@@ -969,8 +1100,6 @@
           slipUrl = await uploadFileToBucket(slipInput.files[0], "slips");
         }
 
-        const nights = getNights(ci, co);
-        const total = selectedRoomForBooking.price_mmk * nights;
         const refCode = "DIR-" + Math.floor(1000 + Math.random() * 9000);
         const statusText = method === "Pay at Check-In" ? "Confirmed" : "Pending Verification";
         const bookedRoomType = selectedRoomForBooking.room_type;
@@ -985,6 +1114,7 @@
             guest_phone: phone,
             check_in: ci,
             check_out: co,
+            booking_option: optionLabel,
             total_mmk: total,
             payment_method: method,
             slip_url: slipUrl,
@@ -1007,15 +1137,15 @@
           <div><b>Hotel:</b> ${currentHotel.name}</div>
           <div><b>Guest:</b> ${name} (${phone})</div>
           <div><b>Room Category:</b> ${bookedRoomType}</div>
-          <div><b>Dates:</b> ${ci} &rarr; ${co} (${nights} night${nights > 1 ? 's' : ''})</div>
+          <div><b>Package:</b> ${optionLabel}</div>
+          <div><b>Date:</b> ${isSession ? ci : `${ci} &rarr; ${co}`}</div>
           <div><b>Total:</b> ${total.toLocaleString()} MMK (${method})</div>
         `;
 
-        // Optional 1-tap Viber notify button if hotel phone is configured
         const viberDigits = formatMyanmarViberNumber(currentHotel.phone);
         const viberBox = document.getElementById("receipt-viber-box");
         if (viberDigits) {
-          const msg = encodeURIComponent(`Mingalabar ${currentHotel.name}, I just booked ${bookedRoomType} (${ci} to ${co}). Ref: ${refCode}, Name: ${name}.`);
+          const msg = encodeURIComponent(`Mingalabar ${currentHotel.name}, I just booked ${bookedRoomType} (${optionLabel}) on ${ci}. Ref: ${refCode}, Name: ${name}.`);
           document.getElementById("receipt-viber-link").href = `viber://chat?number=%2B${viberDigits}&text=${msg}`;
           viberBox.classList.remove("hidden");
         } else {
@@ -1062,7 +1192,6 @@
         document.getElementById("tab-admin-settings").classList.add("hidden");
       }
 
-      // Initialize Web Audio context on this user click so future chimes play cleanly
       try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === "suspended") audioCtx.resume();
@@ -1083,15 +1212,50 @@
       });
     }
 
+    // FILTER LOGIC FOR BOOKING RECORDS
+    function getFilteredBookings() {
+      const searchQ = (document.getElementById("filter-search")?.value || "").trim().toLowerCase();
+      const statusFilter = document.getElementById("filter-status")?.value || "ALL";
+      const typeFilter = document.getElementById("filter-type")?.value || "ALL";
+      const dateFilter = document.getElementById("filter-date")?.value || "";
+
+      return hotelBookings.filter(b => {
+        if (statusFilter !== "ALL" && b.status !== statusFilter) return false;
+
+        const opt = (b.booking_option || "Overnight Stay").toLowerCase();
+        const isSession = !opt.startsWith("overnight");
+        if (typeFilter === "OVERNIGHT" && isSession) return false;
+        if (typeFilter === "SESSION" && !isSession) return false;
+
+        if (dateFilter && b.check_in !== dateFilter) return false;
+
+        if (searchQ) {
+          const hay = `${b.reference_code} ${b.guest_name} ${b.guest_phone} ${b.rooms?.room_type || ''} ${b.booking_option || ''}`.toLowerCase();
+          if (!hay.includes(searchQ)) return false;
+        }
+        return true;
+      });
+    }
+
+    function resetBookingFilters() {
+      document.getElementById("filter-search").value = "";
+      document.getElementById("filter-status").value = "ALL";
+      document.getElementById("filter-type").value = "ALL";
+      document.getElementById("filter-date").value = "";
+      renderAdminDashboard();
+    }
+
     function exportBookingsToExcel() {
-      if (!hotelBookings || hotelBookings.length === 0) {
-        return alert("No bookings available to export yet.");
+      const listToExport = getFilteredBookings();
+      if (!listToExport || listToExport.length === 0) {
+        return alert("No bookings match the current filter to export.");
       }
       const headers = [
         "Booking Reference",
         "Guest Name",
         "Guest Phone",
         "Room Category",
+        "Stay / Session Package",
         "Check-In Date",
         "Check-Out Date",
         "Total Amount (MMK)",
@@ -1102,11 +1266,12 @@
       ];
 
       const escapeCsv = val => `"${String(val ?? "").replace(/"/g, '""')}"`;
-      const rows = hotelBookings.map(b => [
+      const rows = listToExport.map(b => [
         b.reference_code,
         b.guest_name,
         b.guest_phone,
         b.rooms?.room_type || "",
+        b.booking_option || "Overnight Stay",
         b.check_in,
         b.check_out,
         b.total_mmk,
@@ -1173,52 +1338,66 @@
         document.getElementById("btn-remove-mmqr").classList.add("hidden");
       }
 
+      // Render Filtered Bookings Table
+      const filteredList = getFilteredBookings();
+      const countEl = document.getElementById("filter-result-count");
+      if (countEl) countEl.textContent = `Showing ${filteredList.length} of ${hotelBookings.length} booking(s)`;
+
       const tbody = document.getElementById("admin-bookings-tbody");
-      if (hotelBookings.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400 text-xs">No direct bookings received yet.</td></tr>`;
+      if (filteredList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400 text-xs">No bookings match your filter criteria.</td></tr>`;
       } else {
-        tbody.innerHTML = hotelBookings.map(b => `
-          <tr>
-            <td class="py-3 px-4">
-              <div class="font-mono font-bold text-xs text-slate-900">${b.reference_code}</div>
-              <div class="font-semibold text-slate-800">${b.guest_name}</div>
-              <div class="text-xs text-slate-500">${b.guest_phone}</div>
-            </td>
-            <td class="py-3 px-4 text-xs">
-              <div class="font-bold text-slate-800">${b.rooms?.room_type || 'Room Category'}</div>
-              <div class="text-slate-500">${b.check_in} &rarr; ${b.check_out}</div>
-            </td>
-            <td class="py-3 px-4 text-xs">
-              <div class="font-bold text-slate-900">${Number(b.total_mmk).toLocaleString()} MMK</div>
-              <div class="text-slate-500">${b.payment_method}</div>
-              ${b.slip_url ? `<a href="${b.slip_url}" target="_blank" class="inline-block mt-1 text-indigo-600 underline font-semibold">View Slip</a>` : ''}
-            </td>
-            <td class="py-3 px-4">
-              <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                b.status === 'Pending Verification' ? 'bg-amber-100 text-amber-800' :
-                b.status === 'Confirmed' ? 'bg-emerald-100 text-emerald-800' :
-                b.status === 'Cancelled' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600'
-              }">${b.status}</span>
-            </td>
-            <td class="py-3 px-4 text-right space-x-1 whitespace-nowrap">
-              ${b.status === 'Pending Verification' ? `
-                <button onclick="updateBookingStatus('${b.id}', 'Confirmed')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold">Verify Payment</button>
-                <button onclick="rejectBooking('${b.id}')" class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold">Reject</button>
-              ` : ''}
-              ${b.status === 'Confirmed' ? `
-                <button onclick="rejectBooking('${b.id}')" class="px-2.5 py-1 bg-slate-200 hover:bg-rose-100 text-slate-700 hover:text-rose-700 rounded-lg text-xs font-semibold">Cancel</button>
-              ` : ''}
-            </td>
-          </tr>
-        `).join("");
+        tbody.innerHTML = filteredList.map(b => {
+          const pkg = b.booking_option || "Overnight Stay";
+          const isSession = !pkg.toLowerCase().startsWith("overnight");
+          return `
+            <tr>
+              <td class="py-3 px-4">
+                <div class="font-mono font-bold text-xs text-slate-900">${b.reference_code}</div>
+                <div class="font-semibold text-slate-800">${b.guest_name}</div>
+                <div class="text-xs text-slate-500">${b.guest_phone}</div>
+              </td>
+              <td class="py-3 px-4 text-xs space-y-1">
+                <div class="font-bold text-slate-800">${b.rooms?.room_type || 'Room Category'}</div>
+                <span class="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${isSession ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-100 text-slate-700'}">
+                  ${pkg}
+                </span>
+                <div class="text-slate-500">${isSession ? `Date: ${b.check_in}` : `${b.check_in} &rarr; ${b.check_out}`}</div>
+              </td>
+              <td class="py-3 px-4 text-xs">
+                <div class="font-bold text-slate-900">${Number(b.total_mmk).toLocaleString()} MMK</div>
+                <div class="text-slate-500">${b.payment_method}</div>
+                ${b.slip_url ? `<a href="${b.slip_url}" target="_blank" class="inline-block mt-1 text-indigo-600 underline font-semibold">View Slip</a>` : ''}
+              </td>
+              <td class="py-3 px-4">
+                <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                  b.status === 'Pending Verification' ? 'bg-amber-100 text-amber-800' :
+                  b.status === 'Confirmed' ? 'bg-emerald-100 text-emerald-800' :
+                  b.status === 'Cancelled' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600'
+                }">${b.status}</span>
+              </td>
+              <td class="py-3 px-4 text-right space-x-1 whitespace-nowrap">
+                ${b.status === 'Pending Verification' ? `
+                  <button onclick="updateBookingStatus('${b.id}', 'Confirmed')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold">Verify Payment</button>
+                  <button onclick="rejectBooking('${b.id}')" class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold">Reject</button>
+                ` : ''}
+                ${b.status === 'Confirmed' ? `
+                  <button onclick="rejectBooking('${b.id}')" class="px-2.5 py-1 bg-slate-200 hover:bg-rose-100 text-slate-700 hover:text-rose-700 rounded-lg text-xs font-semibold">Cancel</button>
+                ` : ''}
+              </td>
+            </tr>
+          `;
+        }).join("");
       }
 
+      // Admin Room Types Grid (With Session Rate Manager Button)
       const rGrid = document.getElementById("admin-rooms-grid");
       rGrid.innerHTML = hotelRooms.map(r => {
         const photos = getRoomPhotos(r);
         const canAddMore = photos.length < MAX_ROOM_PHOTOS;
         const inv = getCategoryInventoryForDates(r, todayStr, tomorrowStr);
         const amenityText = r.amenities || "Free Wi-Fi, Non-Smoking, Direct Rate";
+        const sessions = getRoomSessions(r);
 
         return `
           <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs flex flex-col justify-between">
@@ -1257,8 +1436,23 @@
               <div class="p-3.5 space-y-2.5">
                 <div>
                   <div class="font-bold text-sm text-slate-900">${r.room_type}</div>
-                  <div class="text-xs font-semibold text-emerald-700">${Number(r.price_mmk).toLocaleString()} MMK / night</div>
+                  <div class="text-xs font-semibold text-emerald-700">Overnight: ${Number(r.price_mmk).toLocaleString()} MMK</div>
                   <div class="text-[11px] text-slate-500 mt-1 line-clamp-2">${amenityText}</div>
+                </div>
+
+                <!-- Session Rates Summary Pill Box -->
+                <div class="p-2 bg-indigo-50/70 border border-indigo-100 rounded-lg space-y-1">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-bold text-indigo-900">Session / Daycation Rates (${sessions.length})</span>
+                    <button onclick="openSessionsModal('${r.id}')" class="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold rounded-md">
+                      + Session Rate
+                    </button>
+                  </div>
+                  ${sessions.length > 0 ? `
+                    <div class="text-[11px] text-indigo-800 space-y-0.5">
+                      ${sessions.map(s => `<div>&bull; ${s.label}: <b>${Number(s.price_mmk).toLocaleString()} MMK</b></div>`).join("")}
+                    </div>
+                  ` : `<div class="text-[10px] text-indigo-500">None added yet (Overnight only)</div>`}
                 </div>
 
                 <div class="bg-slate-50 border border-slate-200 rounded-lg p-2.5 space-y-2">
@@ -1290,7 +1484,7 @@
 
             <div class="px-3.5 pb-3.5 flex flex-wrap gap-1.5">
               <button onclick="promptUpdateAmenities('${r.id}', \`${amenityText.replace(/`/g, "")}\`)" class="flex-1 px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold">Edit Inclusions</button>
-              <button onclick="promptUpdatePrice('${r.id}', ${r.price_mmk})" class="flex-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold">Edit Rate</button>
+              <button onclick="promptUpdatePrice('${r.id}', ${r.price_mmk})" class="flex-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold">Overnight Rate</button>
               <button onclick="toggleBlockCategory('${r.id}', '${r.status}')" class="w-full px-2.5 py-1 rounded-lg text-[11px] font-semibold border ${r.status === 'Blocked' ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}">
                 ${r.status === 'Blocked' ? 'Sold Out / Closed (Click to Reopen)' : 'Open for Online Booking'}
               </button>
@@ -1298,6 +1492,69 @@
           </div>
         `;
       }).join("");
+    }
+
+    // SESSION / DAYCATION MANAGER FUNCTIONS
+    function openSessionsModal(roomId) {
+      activeSessionRoomId = roomId;
+      const room = hotelRooms.find(r => r.id === roomId);
+      if (!room) return;
+      document.getElementById("ms-room-title").textContent = `${room.room_type} – Session Rates`;
+      renderSessionsModalList();
+      document.getElementById("modal-sessions").classList.remove("hidden");
+    }
+
+    function renderSessionsModalList() {
+      const room = hotelRooms.find(r => r.id === activeSessionRoomId);
+      const listEl = document.getElementById("ms-sessions-list");
+      const sessions = room ? getRoomSessions(room) : [];
+
+      if (sessions.length === 0) {
+        listEl.innerHTML = `<div class="text-xs text-slate-400 text-center py-4">No Daycation or Hourly rates added yet for this room type.</div>`;
+        return;
+      }
+
+      listEl.innerHTML = sessions.map((s, idx) => `
+        <div class="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 bg-white text-xs">
+          <div>
+            <div class="font-bold text-slate-900">${s.label}</div>
+            <div class="text-emerald-700 font-semibold">${Number(s.price_mmk).toLocaleString()} MMK</div>
+          </div>
+          <button onclick="removeSessionRateFromRoom(${idx})" class="px-2.5 py-1 bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold rounded-md">
+            Remove
+          </button>
+        </div>
+      `).join("");
+    }
+
+    async function addSessionRateToRoom() {
+      const room = hotelRooms.find(r => r.id === activeSessionRoomId);
+      if (!room) return;
+      const label = document.getElementById("ms-label").value.trim();
+      const price = parseInt(document.getElementById("ms-price").value, 10);
+      if (!label || !price || price <= 0) return alert("Enter a session name (e.g. Daycation or 3 Hours) and price.");
+
+      const updatedSessions = [...getRoomSessions(room), { label, price_mmk: price }];
+      await sbFetch(`rooms?id=eq.${room.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ session_rates: updatedSessions })
+      });
+      document.getElementById("ms-label").value = "";
+      document.getElementById("ms-price").value = "";
+      await refreshHotelData();
+      renderSessionsModalList();
+    }
+
+    async function removeSessionRateFromRoom(sessionIdx) {
+      const room = hotelRooms.find(r => r.id === activeSessionRoomId);
+      if (!room) return;
+      const updatedSessions = getRoomSessions(room).filter((_, idx) => idx !== sessionIdx);
+      await sbFetch(`rooms?id=eq.${room.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ session_rates: updatedSessions })
+      });
+      await refreshHotelData();
+      renderSessionsModalList();
     }
 
     async function adjustQuotaByDelta(roomId, currentTotal, delta) {
@@ -1388,7 +1645,7 @@
     }
 
     async function promptUpdatePrice(roomId, oldPrice) {
-      const val = prompt("Enter new nightly rate (MMK):", oldPrice);
+      const val = prompt("Enter new overnight rate (MMK):", oldPrice);
       if (!val || isNaN(val)) return;
       await sbFetch(`rooms?id=eq.${roomId}`, { method: "PATCH", body: JSON.stringify({ price_mmk: parseInt(val, 10) }) });
       await refreshHotelData();
@@ -1407,7 +1664,7 @@
       const maxGuests = parseInt(document.getElementById("new-room-guests").value, 10) || 2;
       const amenities = document.getElementById("new-room-amenities").value.trim() || "Free Wi-Fi, Non-Smoking";
       const files = Array.from(document.getElementById("new-room-photo").files || []).slice(0, MAX_ROOM_PHOTOS);
-      if (!type || !price) return alert("Enter room category name and nightly rate.");
+      if (!type || !price) return alert("Enter room category name and overnight rate.");
 
       const btn = document.getElementById("btn-admin-add-room");
       btn.disabled = true;
@@ -1429,6 +1686,7 @@
             max_guests: maxGuests,
             price_mmk: price,
             amenities: amenities,
+            session_rates: [],
             image_url: uploadedUrls[0] || null,
             gallery_urls: uploadedUrls,
             status: "Available"
@@ -1586,6 +1844,7 @@
             total_rooms: totalRooms,
             price_mmk: price,
             amenities: amenities,
+            session_rates: [],
             image_url: uploadedUrls[0] || null,
             gallery_urls: uploadedUrls,
             status: "Available"
