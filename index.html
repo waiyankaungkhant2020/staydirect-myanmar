@@ -170,7 +170,6 @@
 
         <!-- TAB 1: INCOMING BOOKINGS & SLIPS (WITH FILTER BAR) -->
         <div id="admin-panel-bookings" class="space-y-3">
-          <!-- Filter & Search Controls -->
           <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 items-end">
             <div class="lg:col-span-2">
               <label class="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Search Guest / Phone / Ref</label>
@@ -511,13 +510,11 @@
       </div>
 
       <div class="space-y-3">
-        <!-- Stay / Session Package Selector -->
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">Select Stay / Session Option *</label>
           <select id="mb-stay-option" onchange="onBookingOptionChange()" class="w-full px-3 py-2 border border-emerald-300 bg-emerald-50/40 rounded-lg text-sm font-semibold text-slate-900"></select>
         </div>
 
-        <!-- Optional Arrival Time (Shown for Session / Daycation) -->
         <div id="mb-session-time-box" class="hidden">
           <label class="block text-xs font-semibold text-slate-700 mb-1">Preferred Check-In Time (Session)</label>
           <input type="time" id="mb-session-time" value="10:00" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
@@ -593,7 +590,7 @@
   </div>
 
   <!-- ========================================================= -->
-  <!-- JAVASCRIPT LOGIC: BOOKING FILTERS + SESSION RATES         -->
+  <!-- JAVASCRIPT LOGIC: INCLUDES SAFE DELETE ROOM CATEGORY      -->
   <!-- ========================================================= -->
   <script>
     const SUPABASE_URL = "https://xrwqbdjvuztjgkknsank.supabase.co";
@@ -852,7 +849,6 @@
       renderAdminDashboard();
     }
 
-    // RENDER GUEST ROOM CATEGORIES (SHOWING OVERNIGHT + SESSION RATES)
     function renderGuestRooms() {
       const grid = document.getElementById("guest-rooms-grid");
       const ci = document.getElementById("guest-checkin").value;
@@ -937,7 +933,6 @@
       document.getElementById("guest-room-count").textContent = `${totalAvailableOnline} rooms open online for ${ci}`;
     }
 
-    // GALLERY LIGHTBOX
     function openRoomGallery(roomId) {
       const room = hotelRooms.find(r => r.id === roomId);
       if (!room) return;
@@ -975,7 +970,6 @@
       renderGallerySlide();
     }
 
-    // GUEST BOOKING MODAL (SUPPORTS OVERNIGHT + SESSION RATES)
     function openBookingModal(roomId) {
       selectedRoomForBooking = hotelRooms.find(r => r.id === roomId);
       if (!selectedRoomForBooking) return;
@@ -986,7 +980,6 @@
 
       document.getElementById("mb-room-title").textContent = selectedRoomForBooking.room_type;
 
-      // Populate Stay / Session Package Dropdown
       const optSelect = document.getElementById("mb-stay-option");
       const sessions = getRoomSessions(selectedRoomForBooking);
       let optHtml = `<option value="OVERNIGHT" data-price="${overnightTotal}" data-label="Overnight Stay (${nights} Night${nights > 1 ? 's' : ''})">Overnight Stay (${nights} Night${nights > 1 ? 's' : ''}) – ${overnightTotal.toLocaleString()} MMK</option>`;
@@ -1079,7 +1072,6 @@
       }
 
       const ci = document.getElementById("guest-checkin").value;
-      // For same-day session bookings, set check_out to next day so overlap date check (check_in < checkOut && check_out > checkIn) counts the room on that date
       let co = document.getElementById("guest-checkout").value;
       if (isSession) {
         const nextD = new Date(ci);
@@ -1212,7 +1204,6 @@
       });
     }
 
-    // FILTER LOGIC FOR BOOKING RECORDS
     function getFilteredBookings() {
       const searchQ = (document.getElementById("filter-search")?.value || "").trim().toLowerCase();
       const statusFilter = document.getElementById("filter-status")?.value || "ALL";
@@ -1338,7 +1329,6 @@
         document.getElementById("btn-remove-mmqr").classList.add("hidden");
       }
 
-      // Render Filtered Bookings Table
       const filteredList = getFilteredBookings();
       const countEl = document.getElementById("filter-result-count");
       if (countEl) countEl.textContent = `Showing ${filteredList.length} of ${hotelBookings.length} booking(s)`;
@@ -1390,7 +1380,6 @@
         }).join("");
       }
 
-      // Admin Room Types Grid (With Session Rate Manager Button)
       const rGrid = document.getElementById("admin-rooms-grid");
       rGrid.innerHTML = hotelRooms.map(r => {
         const photos = getRoomPhotos(r);
@@ -1434,13 +1423,17 @@
               </div>
 
               <div class="p-3.5 space-y-2.5">
-                <div>
-                  <div class="font-bold text-sm text-slate-900">${r.room_type}</div>
-                  <div class="text-xs font-semibold text-emerald-700">Overnight: ${Number(r.price_mmk).toLocaleString()} MMK</div>
-                  <div class="text-[11px] text-slate-500 mt-1 line-clamp-2">${amenityText}</div>
+                <div class="flex items-start justify-between gap-2">
+                  <div>
+                    <div class="font-bold text-sm text-slate-900">${r.room_type}</div>
+                    <div class="text-xs font-semibold text-emerald-700">Overnight: ${Number(r.price_mmk).toLocaleString()} MMK</div>
+                  </div>
+                  <button onclick="deleteRoomCategory('${r.id}')" title="Delete Room Category" class="px-2 py-1 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-bold">
+                    Delete
+                  </button>
                 </div>
+                <div class="text-[11px] text-slate-500 line-clamp-2">${amenityText}</div>
 
-                <!-- Session Rates Summary Pill Box -->
                 <div class="p-2 bg-indigo-50/70 border border-indigo-100 rounded-lg space-y-1">
                   <div class="flex items-center justify-between">
                     <span class="text-[11px] font-bold text-indigo-900">Session / Daycation Rates (${sessions.length})</span>
@@ -1494,7 +1487,29 @@
       }).join("");
     }
 
-    // SESSION / DAYCATION MANAGER FUNCTIONS
+    // SAFE DELETE ROOM CATEGORY (CHECKS FOR LINKED BOOKINGS FIRST)
+    async function deleteRoomCategory(roomId) {
+      const room = hotelRooms.find(r => r.id === roomId);
+      if (!room) return;
+
+      const linkedBookings = hotelBookings.filter(b => b.room_id === roomId);
+      if (linkedBookings.length > 0) {
+        return alert(
+          `Cannot delete "${room.room_type}" because it has ${linkedBookings.length} booking record(s) in your history.\n\n` +
+          `Tip: Click "Open for Online Booking" at the bottom of the card to close/hide it from guests without losing your booking records.`
+        );
+      }
+
+      if (!confirm(`Permanently delete room category "${room.room_type}"? This cannot be undone.`)) return;
+
+      try {
+        await sbFetch(`rooms?id=eq.${roomId}`, { method: "DELETE" });
+        await refreshHotelData();
+      } catch (e) {
+        alert("Could not delete room category: " + e.message);
+      }
+    }
+
     function openSessionsModal(roomId) {
       activeSessionRoomId = roomId;
       const room = hotelRooms.find(r => r.id === roomId);
