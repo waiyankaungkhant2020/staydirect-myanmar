@@ -101,7 +101,42 @@
         </button>
       </div>
 
-      <div id="admin-workspace" class="hidden space-y-6">
+      <div id="admin-workspace" class="hidden space-y-5">
+        <!-- LIVE AUTO-REFRESH & BELL STATUS BAR -->
+        <div class="bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div class="flex items-center gap-2">
+            <span class="relative flex h-2.5 w-2.5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <span class="font-bold text-slate-800">Live Auto-Sync Active</span>
+            <span class="text-slate-400 hidden sm:inline" id="live-last-checked">• Checking every 15s</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="toggleBellSound()" id="btn-toggle-sound" class="px-2.5 py-1 rounded-lg font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition">
+              Bell Sound: ON
+            </button>
+            <button onclick="playReceptionBell()" class="px-2.5 py-1 rounded-lg font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+              Test Bell
+            </button>
+          </div>
+        </div>
+
+        <!-- NEW BOOKING FLASHING NOTIFICATION BANNER -->
+        <div id="new-booking-banner" class="hidden bg-emerald-600 text-white px-4 py-3.5 rounded-xl shadow-md flex items-center justify-between gap-3 fade-in">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-extrabold text-sm">&#9834;</div>
+            <div>
+              <div class="font-extrabold text-sm" id="banner-booking-title">New Reservation Received!</div>
+              <div class="text-xs text-emerald-100" id="banner-booking-sub"></div>
+            </div>
+          </div>
+          <button onclick="dismissNewBookingBanner()" class="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-xs font-bold">
+            Dismiss
+          </button>
+        </div>
+
+        <!-- KPI CARDS -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
             <div class="text-xs font-medium text-slate-500">Confirmed Direct Bookings</div>
@@ -308,8 +343,8 @@
               <input type="file" id="sa-mmqr-file" accept="image/*" class="w-full text-xs text-slate-500" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">KBZPay No. (Leave blank if using MMQR only)</label>
-              <input type="text" id="sa-kbz" placeholder="Optional" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Hotel Phone / Viber (Optional)</label>
+              <input type="text" id="sa-kbz" placeholder="09..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
             </div>
             <div class="grid grid-cols-2 gap-2">
               <div>
@@ -449,7 +484,7 @@
     </div>
   </div>
 
-  <!-- INSTANT BOOKING RECEIPT POPUP -->
+  <!-- INSTANT BOOKING RECEIPT POPUP (WITH 1-TAP VIBER / CALL SHORTCUT) -->
   <div id="modal-receipt" class="hidden fixed inset-0 bg-slate-950/60 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4 text-center">
       <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-2xl font-extrabold">&#10003;</div>
@@ -458,6 +493,13 @@
         <p class="text-xs text-slate-500 mt-1">Please take a screenshot of this confirmation for your arrival.</p>
       </div>
       <div id="receipt-details" class="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-left space-y-1.5 text-xs"></div>
+
+      <div id="receipt-viber-box" class="hidden space-y-2">
+        <a id="receipt-viber-link" href="#" class="block w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs shadow-sm transition">
+          Notify Hotel via Viber
+        </a>
+      </div>
+
       <button onclick="closeModal('modal-receipt')" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-sm">
         Done
       </button>
@@ -465,7 +507,7 @@
   </div>
 
   <!-- ========================================================= -->
-  <!-- JAVASCRIPT LOGIC: INCLUSIONS + QUICK QUOTA + ROLES        -->
+  <!-- JAVASCRIPT LOGIC: LIVE AUTO-REFRESH + RECEPTION BELL CHIME  -->
   <!-- ========================================================= -->
   <script>
     const SUPABASE_URL = "https://xrwqbdjvuztjgkknsank.supabase.co";
@@ -515,10 +557,108 @@
     let selectedRoomForBooking = null;
     let loggedInRole = null;
 
+    // Live Auto-Refresh & Reception Bell State
+    let livePollTimer = null;
+    let knownBookingIds = new Set();
+    let bellSoundEnabled = true;
+    let audioCtx = null;
+
     let activeGalleryPhotos = [];
     let activeGalleryIndex = 0;
 
     const FALLBACK_ROOM_IMG = "https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=800&q=80";
+
+    // NATIVE WEB AUDIO RECEPTION BELL CHIME (NO EXTERNAL MP3 NEEDED)
+    function playReceptionBell() {
+      if (!bellSoundEnabled) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === "suspended") {
+          audioCtx.resume();
+        }
+        const now = audioCtx.currentTime;
+        // Two-note hotel desk chime: E5 (659.25 Hz) -> C6 (1046.50 Hz)
+        [659.25, 1046.5].forEach((freq, idx) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(freq, now + idx * 0.18);
+
+          gain.gain.setValueAtTime(0.001, now + idx * 0.18);
+          gain.gain.exponentialRampToValueAtTime(0.35, now + idx * 0.18 + 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.18 + 1.1);
+
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now + idx * 0.18);
+          osc.stop(now + idx * 0.18 + 1.15);
+        });
+      } catch (e) {
+        console.warn("Audio chime blocked until user interaction:", e);
+      }
+    }
+
+    function toggleBellSound() {
+      bellSoundEnabled = !bellSoundEnabled;
+      const btn = document.getElementById("btn-toggle-sound");
+      if (bellSoundEnabled) {
+        btn.textContent = "Bell Sound: ON";
+        btn.className = "px-2.5 py-1 rounded-lg font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition";
+        playReceptionBell();
+      } else {
+        btn.textContent = "Bell Sound: Muted";
+        btn.className = "px-2.5 py-1 rounded-lg font-bold bg-slate-100 text-slate-500 border border-slate-200 transition";
+      }
+    }
+
+    function startLiveAutoRefresh() {
+      // Seed known booking IDs on initial unlock so existing bookings don't trigger alert
+      knownBookingIds = new Set(hotelBookings.map(b => b.id));
+      if (livePollTimer) clearInterval(livePollTimer);
+
+      livePollTimer = setInterval(async () => {
+        if (!currentHotel || !loggedInRole) return;
+        try {
+          const latestBookings = await sbFetch(`bookings?hotel_id=eq.${currentHotel.id}&select=*,rooms(room_type)&order=created_at.desc`) || [];
+          const newArrivals = latestBookings.filter(b => !knownBookingIds.has(b.id));
+
+          latestBookings.forEach(b => knownBookingIds.add(b.id));
+          hotelBookings = latestBookings;
+
+          const timeLabel = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+          const statusEl = document.getElementById("live-last-checked");
+          if (statusEl) statusEl.textContent = `• Last synced ${timeLabel}`;
+
+          if (newArrivals.length > 0) {
+            const newest = newArrivals[0];
+            playReceptionBell();
+            document.getElementById("banner-booking-title").textContent = `New Reservation: ${newest.reference_code} (${newest.guest_name})`;
+            document.getElementById("banner-booking-sub").textContent = `${newest.rooms?.room_type || 'Room'} • ${newest.check_in} to ${newest.check_out} • ${Number(newest.total_mmk).toLocaleString()} MMK`;
+            document.getElementById("new-booking-banner").classList.remove("hidden");
+            document.title = `(${newArrivals.length} NEW) ${currentHotel.name} – Direct Bookings`;
+          }
+
+          renderAdminDashboard();
+        } catch (err) {
+          console.warn("Auto-sync poll skipped:", err.message);
+        }
+      }, 15000); // Checks every 15 seconds
+    }
+
+    function dismissNewBookingBanner() {
+      document.getElementById("new-booking-banner").classList.add("hidden");
+      if (currentHotel) document.title = `${currentHotel.name} – Direct Booking Portal`;
+    }
+
+    function formatMyanmarViberNumber(rawPhone) {
+      if (!rawPhone) return null;
+      const digits = rawPhone.replace(/\D/g, "");
+      if (digits.startsWith("09")) return "95" + digits.slice(1);
+      if (digits.startsWith("959")) return digits;
+      return digits.length >= 7 ? digits : null;
+    }
 
     function getRoomPhotos(room) {
       let arr = [];
@@ -632,11 +772,12 @@
       ]);
       hotelRooms = roomsData || [];
       hotelBookings = bookingsData || [];
+      hotelBookings.forEach(b => knownBookingIds.add(b.id));
       renderGuestRooms();
       renderAdminDashboard();
     }
 
-    // RENDER GUEST ROOM CATEGORIES WITH AMENITY BADGES
+    // RENDER GUEST ROOM CATEGORIES
     function renderGuestRooms() {
       const grid = document.getElementById("guest-rooms-grid");
       const ci = document.getElementById("guest-checkin").value;
@@ -682,7 +823,6 @@
                   <p class="text-xs text-slate-500 mt-0.5">Up to ${room.max_guests || 2} Guests • Selected Dates: ${ci} to ${co}</p>
                 </div>
 
-                <!-- Room Inclusions & Highlights Tags -->
                 <div class="flex flex-wrap gap-1.5">
                   ${amenityList.map(tag => `
                     <span class="px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-medium">
@@ -870,6 +1010,18 @@
           <div><b>Dates:</b> ${ci} &rarr; ${co} (${nights} night${nights > 1 ? 's' : ''})</div>
           <div><b>Total:</b> ${total.toLocaleString()} MMK (${method})</div>
         `;
+
+        // Optional 1-tap Viber notify button if hotel phone is configured
+        const viberDigits = formatMyanmarViberNumber(currentHotel.phone);
+        const viberBox = document.getElementById("receipt-viber-box");
+        if (viberDigits) {
+          const msg = encodeURIComponent(`Mingalabar ${currentHotel.name}, I just booked ${bookedRoomType} (${ci} to ${co}). Ref: ${refCode}, Name: ${name}.`);
+          document.getElementById("receipt-viber-link").href = `viber://chat?number=%2B${viberDigits}&text=${msg}`;
+          viberBox.classList.remove("hidden");
+        } else {
+          viberBox.classList.add("hidden");
+        }
+
         document.getElementById("modal-receipt").classList.remove("hidden");
       } catch (err) {
         alert("Booking error: " + err.message);
@@ -910,7 +1062,14 @@
         document.getElementById("tab-admin-settings").classList.add("hidden");
       }
 
+      // Initialize Web Audio context on this user click so future chimes play cleanly
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === "suspended") audioCtx.resume();
+      } catch (e) {}
+
       renderAdminDashboard();
+      startLiveAutoRefresh();
     }
 
     function switchAdminTab(tab) {
@@ -1014,7 +1173,6 @@
         document.getElementById("btn-remove-mmqr").classList.add("hidden");
       }
 
-      // Bookings Table
       const tbody = document.getElementById("admin-bookings-tbody");
       if (hotelBookings.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400 text-xs">No direct bookings received yet.</td></tr>`;
@@ -1055,7 +1213,6 @@
         `).join("");
       }
 
-      // Admin Room Types Grid with Quick -1 / +1 Online Quota Controls & Inclusions Editor
       const rGrid = document.getElementById("admin-rooms-grid");
       rGrid.innerHTML = hotelRooms.map(r => {
         const photos = getRoomPhotos(r);
@@ -1104,7 +1261,6 @@
                   <div class="text-[11px] text-slate-500 mt-1 line-clamp-2">${amenityText}</div>
                 </div>
 
-                <!-- Quick -1 / +1 Online Quota Adjuster -->
                 <div class="bg-slate-50 border border-slate-200 rounded-lg p-2.5 space-y-2">
                   <div class="grid grid-cols-3 gap-1 text-center">
                     <div>
@@ -1354,7 +1510,7 @@
       const name = document.getElementById("sa-name").value.trim();
       const slug = document.getElementById("sa-slug").value.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
       const loc = document.getElementById("sa-loc").value.trim();
-      const kbz = document.getElementById("sa-kbz").value.trim();
+      const phone = document.getElementById("sa-kbz").value.trim();
       const staffPin = document.getElementById("sa-staff-pin").value.trim() || "1234";
       const ownerPin = document.getElementById("sa-owner-pin").value.trim() || "9999";
       const mmqrFile = document.getElementById("sa-mmqr-file").files[0];
@@ -1377,9 +1533,9 @@
             name,
             slug,
             location: loc,
-            phone: kbz || null,
-            kbzpay_number: kbz || null,
-            wavepay_number: kbz || null,
+            phone: phone || null,
+            kbzpay_number: null,
+            wavepay_number: null,
             mmqr_url: mmqrUrl,
             admin_pin: staffPin,
             owner_pin: ownerPin,
